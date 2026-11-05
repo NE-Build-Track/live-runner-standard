@@ -1,0 +1,470 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "zio.transcribe.v1",
+    "version": "1",
+    "description": "Transcribes the speech in a stored audio or video file, fetched from the deployment's own storage, into timed text segments with the model the operator configures. Drafted from Ziply.io's runners at 283c77a03ac1a27244dba9b50d3dbaba801adfbb."
+  },
+  "paths": {
+    "/v1/transcribe": {
+      "post": {
+        "operationId": "transcribe",
+        "summary": "Transcribe the speech in a stored audio or video file into timed segments",
+        "description": "Answers 200 at once and streams NDJSON: progress lines, at least one every 10 s, then one result line, always last. The runner decodes the first audio stream and transcribes it with the model its operator configured. It writes nothing to storage, so an attempt whose stream was lost leaves no record.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscribeRequest"
+              },
+              "examples": {
+                "transcribe": {
+                  "value": {
+                    "schema_version": 1,
+                    "work_id": "trk_s2",
+                    "attempt_id": "trk_s2/1",
+                    "language": "es",
+                    "deadline_s": 570,
+                    "input": {
+                      "url": "https://media.zio.example/src/env_prod/up_7Rk2?X-Signature=abc"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An NDJSON stream, one Line per line. The result line's outcome, not the status, says whether the attempt succeeded",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/Line"
+                },
+                "examples": {
+                  "progress": {
+                    "value": {
+                      "type": "progress",
+                      "attempt_id": "trk_s2/1",
+                      "stage": "transcribe",
+                      "percent": 42.5
+                    }
+                  },
+                  "succeeded": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "trk_s2/1",
+                      "outcome": "succeeded",
+                      "language": "es",
+                      "model": {
+                        "name": "faster-whisper-small",
+                        "revision": "536b0662742c02347bc0e980a01041f333bce120"
+                      },
+                      "audio_s": 862.4,
+                      "segments": [
+                        {
+                          "start_s": 0.0,
+                          "end_s": 2.4,
+                          "text": "Hola a todos."
+                        }
+                      ]
+                    }
+                  },
+                  "failed": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "trk_s2/1",
+                      "outcome": "failed",
+                      "error": {
+                        "kind": "language_unsupported",
+                        "retryable": false,
+                        "detail": "detected fr"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused before any work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "invalid or missing: deadline_s"
+                    }
+                  },
+                  "schema_unsupported": {
+                    "value": {
+                      "kind": "schema_unsupported",
+                      "detail": "schema_version 2; this runner speaks 1"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "ndjson",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "last-line",
+                "pointer": "/outcome",
+                "equals": "succeeded"
+              }
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "Not JSON, or not the request schema"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "An unknown schema_version"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "input_unreadable",
+              "kind": "input_unreadable",
+              "note": "The input could not be fetched, or is not on the deployment's storage origins"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "input_unsupported",
+              "kind": "input_unsupported",
+              "note": "No audio the runner can decode"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "language_unsupported",
+              "kind": "input_unsupported",
+              "note": "A language the runner does not offer, or auto detected one it does not offer"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "deadline_exceeded",
+              "kind": "deadline_exceeded",
+              "note": "deadline_s passed"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "internal",
+              "kind": "internal",
+              "note": "Anything else"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "audio_seconds",
+              "in": "last-line",
+              "pointer": "/audio_s"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/input/url",
+              "kind": "url",
+              "origin": "deployment",
+              "media_types": [
+                "audio/*",
+                "video/*"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "input_unreadable",
+              "input_unsupported",
+              "language_unsupported",
+              "deadline_exceeded",
+              "internal"
+            ],
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "Ziply.io's own retry flag; the entry's errors map each kind to a base kind"
+          },
+          "detail": {
+            "type": "string",
+            "description": "For the operator; for internal, the error's type only"
+          }
+        },
+        "required": [
+          "kind",
+          "retryable",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "Input": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A GET on one of the deployment's storage origins; any other origin fails with input_unreadable",
+            "format": "uri",
+            "x-media": {
+              "by": "url",
+              "accept": [
+                "audio/*",
+                "video/*"
+              ]
+            }
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "Line": {
+        "description": "One line of the NDJSON answer: progress lines, then exactly one result line, always last",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Progress"
+          },
+          {
+            "$ref": "#/components/schemas/Result"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "progress": "#/components/schemas/Progress",
+            "result": "#/components/schemas/Result"
+          }
+        }
+      },
+      "ModelInfo": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "Progress": {
+        "properties": {
+          "type": {
+            "const": "progress",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "fetch",
+              "decode",
+              "transcribe"
+            ],
+            "type": "string"
+          },
+          "percent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "stage",
+          "percent",
+          "type"
+        ],
+        "type": "object"
+      },
+      "Refusal": {
+        "description": "A 400 answered before any work",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "schema_unsupported"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Result": {
+        "properties": {
+          "type": {
+            "const": "result",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "description": "The language transcribed: the one requested, or the one auto detected"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo",
+            "description": "The model the operator configured, as the runner reports it"
+          },
+          "audio_s": {
+            "type": "number",
+            "description": "Seconds of audio decoded from the input"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "type": "array"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "outcome",
+          "type"
+        ],
+        "type": "object"
+      },
+      "Segment": {
+        "properties": {
+          "start_s": {
+            "type": "number"
+          },
+          "end_s": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_s",
+          "end_s",
+          "text"
+        ],
+        "type": "object",
+        "description": "One timed piece of the transcript; times in seconds from the input's start"
+      },
+      "TranscribeRequest": {
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "description": "The wire contract's version"
+          },
+          "work_id": {
+            "type": "string",
+            "description": "Opaque; echoed in the result. Logged for correlation"
+          },
+          "attempt_id": {
+            "type": "string",
+            "description": "Opaque; echoed in every line. The caller owns attempts: a new attempt has a new attempt_id"
+          },
+          "language": {
+            "type": "string",
+            "description": "A language code the runner offers, or auto to detect it; anything else fails with language_unsupported"
+          },
+          "deadline_s": {
+            "exclusiveMinimum": 0,
+            "type": "integer",
+            "description": "Seconds; past it the attempt ends with deadline_exceeded"
+          },
+          "input": {
+            "$ref": "#/components/schemas/Input"
+          }
+        },
+        "required": [
+          "schema_version",
+          "work_id",
+          "attempt_id",
+          "language",
+          "deadline_s",
+          "input"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "zio.transcribe.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "transcription"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "Reads sources only from its deployment's storage origins; one job at a time on one GPU, sharing its model with the live form"
+    },
+    "attempts": "caller",
+    "readiness": "The operator's model loads and transcribes one second of silence in the first language the runner offers",
+    "cost_hint": {
+      "speed": {
+        "faster-whisper-small/en/gtx-1650": 14,
+        "faster-whisper-small/es/gtx-1650": 22,
+        "faster-whisper-medium/en/gtx-1650": 5.6,
+        "faster-whisper-medium/es/gtx-1650": 8.8
+      },
+      "note": "Seconds of audio per second of work, alone on a GeForce GTX 1650 with int8 weights, by Ziply.io's measurement (2026-10-30). The model is the operator's choice"
+    }
+  }
+}

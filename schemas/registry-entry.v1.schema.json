@@ -4,7 +4,11 @@
   "title": "Registry entry v1: the x-livepeer extension",
   "description": "A registry entry is an OpenAPI 3.1.0 document. This schema defines the x-livepeer object at its root. $defs/operation defines the x-livepeer object on each operation of a profile entry, and $defs/media the x-media object on schema fields that carry media. See SPEC.md.",
   "type": "object",
-  "required": ["registry_entry", "profile", "kind"],
+  "required": [
+    "registry_entry",
+    "profile",
+    "kind"
+  ],
   "properties": {
     "registry_entry": {
       "const": 1
@@ -15,14 +19,20 @@
     },
     "kind": {
       "description": "profile: a wire profile runners speak. shared: a shape other entries reuse, with components and no paths",
-      "enum": ["profile", "shared"]
+      "enum": [
+        "profile",
+        "shared"
+      ]
     },
     "extends": {
       "description": "A base entry whose behavior this one shares",
       "$ref": "#/$defs/profile_id"
     },
     "mode": {
-      "enum": ["single-shot", "persistent"]
+      "enum": [
+        "single-shot",
+        "persistent"
+      ]
     },
     "capabilities": {
       "description": "The capabilities this profile serves, from capabilities.json",
@@ -35,10 +45,15 @@
     },
     "admission": {
       "type": "object",
-      "required": ["default"],
+      "required": [
+        "default"
+      ],
       "properties": {
         "default": {
-          "enum": ["candidate", "private"]
+          "enum": [
+            "candidate",
+            "private"
+          ]
         },
         "reason": {
           "type": "string",
@@ -80,16 +95,41 @@
         }
       },
       "then": {
-        "required": ["mode", "capabilities", "admission", "attempts"]
+        "required": [
+          "mode",
+          "capabilities",
+          "admission",
+          "attempts"
+        ]
       },
       "else": {
         "not": {
           "anyOf": [
-            {"required": ["mode"]},
-            {"required": ["capabilities"]},
-            {"required": ["admission"]},
-            {"required": ["attempts"]},
-            {"required": ["presets"]}
+            {
+              "required": [
+                "mode"
+              ]
+            },
+            {
+              "required": [
+                "capabilities"
+              ]
+            },
+            {
+              "required": [
+                "admission"
+              ]
+            },
+            {
+              "required": [
+                "attempts"
+              ]
+            },
+            {
+              "required": [
+                "presets"
+              ]
+            }
           ]
         }
       }
@@ -107,10 +147,13 @@
     },
     "attempts": {
       "description": "Who owns retries: the caller (the gateway must not retry) or the gateway",
-      "enum": ["caller", "gateway"]
+      "enum": [
+        "caller",
+        "gateway"
+      ]
     },
     "pointer": {
-      "description": "A JSON pointer (RFC 6901); the empty string is the whole value",
+      "description": "A JSON pointer (RFC 6901); the empty string is the whole value, and a * token stands for every item of an array or every member of an object",
       "type": "string",
       "pattern": "^(/.*)?$"
     },
@@ -128,7 +171,14 @@
       ]
     },
     "measure": {
-      "enum": ["input_tokens", "output_tokens", "images", "audio_seconds", "media_seconds", "characters"]
+      "enum": [
+        "input_tokens",
+        "output_tokens",
+        "images",
+        "audio_seconds",
+        "media_seconds",
+        "characters"
+      ]
     },
     "cost_hint": {
       "description": "Optional facts that let an app estimate wholesale cost before a call",
@@ -142,7 +192,10 @@
           "description": "Work done per wall-clock second, by named setup, such as source seconds encoded per second",
           "type": "object",
           "additionalProperties": {
-            "type": ["number", "null"]
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "note": {
@@ -154,10 +207,27 @@
     "operation": {
       "description": "The x-livepeer object on each operation of a profile entry. The operation's operationId is the endpoint's name",
       "type": "object",
-      "required": ["framing", "success", "errors"],
+      "required": [
+        "framing",
+        "success",
+        "errors"
+      ],
       "properties": {
         "framing": {
-          "enum": ["json", "sse", "ndjson", "binary"]
+          "description": "The framing or framings this endpoint answers with, such as [\"json\", \"sse\"] for an endpoint that streams on request",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/framing"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/framing"
+              }
+            }
+          ]
         },
         "success": {
           "$ref": "#/$defs/success"
@@ -196,13 +266,18 @@
         },
         "session": {
           "$ref": "#/$defs/session"
+        },
+        "recovery": {
+          "$ref": "#/$defs/recovery"
         }
       },
       "additionalProperties": false
     },
     "success": {
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "properties": {
         "status": {
           "description": "The HTTP statuses that can be success",
@@ -216,48 +291,99 @@
           }
         },
         "final": {
-          "description": "What must also hold at the end of the answer, where a status alone is not success",
-          "type": "object",
-          "required": ["in"],
-          "properties": {
-            "in": {
-              "enum": ["body", "last-line", "last-event"]
+          "description": "What must also hold at the end of the answer, where a status alone is not success. Each condition applies to answers with its framing, or to all answers when it names none",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "What must also hold at the end of the answer, where a status alone is not success",
+            "type": "object",
+            "required": [
+              "in"
+            ],
+            "properties": {
+              "framing": {
+                "description": "Applies only to answers with this framing",
+                "$ref": "#/$defs/framing"
+              },
+              "in": {
+                "enum": [
+                  "body",
+                  "last-line",
+                  "last-event"
+                ]
+              },
+              "event": {
+                "description": "The SSE event name that ends a successful answer",
+                "type": "string"
+              },
+              "data": {
+                "description": "The exact data of the event that ends a successful answer, such as [DONE]",
+                "type": "string"
+              },
+              "pointer": {
+                "$ref": "#/$defs/pointer"
+              },
+              "equals": {},
+              "present": {
+                "description": "true: the pointer must name a value; false: it must not",
+                "type": "boolean"
+              }
             },
-            "event": {
-              "description": "The SSE event name that ends a successful answer",
-              "type": "string"
-            },
-            "data": {
-              "description": "The exact data of the event that ends a successful answer, such as [DONE]",
-              "type": "string"
-            },
-            "pointer": {
-              "$ref": "#/$defs/pointer"
-            },
-            "equals": {}
-          },
-          "anyOf": [
-            {"required": ["event"]},
-            {"required": ["data"]},
-            {"required": ["pointer", "equals"]}
-          ],
-          "additionalProperties": false
+            "anyOf": [
+              {
+                "required": [
+                  "event"
+                ]
+              },
+              {
+                "required": [
+                  "data"
+                ]
+              },
+              {
+                "required": [
+                  "pointer",
+                  "equals"
+                ]
+              },
+              {
+                "required": [
+                  "pointer",
+                  "present"
+                ]
+              }
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
     },
     "error_mapping": {
-      "description": "One error the runner returns. Every condition given must hold",
+      "description": "One error the runner returns. Every condition given must hold. A gateway checks an answer against the mappings in order, and the first that matches decides the kind",
       "type": "object",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
+        "framing": {
+          "description": "Applies only to answers with this framing",
+          "$ref": "#/$defs/framing"
+        },
         "status": {
           "type": "integer",
           "minimum": 100,
           "maximum": 599
         },
         "in": {
-          "enum": ["body", "last-line", "last-event"]
+          "description": "Where to look: the body, the last or any NDJSON line, or the last or any SSE event",
+          "enum": [
+            "body",
+            "last-line",
+            "any-line",
+            "last-event",
+            "any-event"
+          ]
         },
         "event": {
           "type": "string"
@@ -266,6 +392,20 @@
           "$ref": "#/$defs/pointer"
         },
         "equals": {},
+        "matches": {
+          "description": "A regular expression (ECMA-262) the value at pointer, as a string, must match",
+          "type": "string",
+          "minLength": 1
+        },
+        "present": {
+          "description": "true: the pointer must name a value; false: it must not",
+          "type": "boolean"
+        },
+        "content_type": {
+          "description": "The answer's content type must start with this, such as text/html for a proxy's error page",
+          "type": "string",
+          "minLength": 1
+        },
         "kind": {
           "$ref": "#/$defs/error_kind"
         },
@@ -274,21 +414,49 @@
         }
       },
       "dependentRequired": {
-        "equals": ["pointer"],
-        "pointer": ["in"],
-        "event": ["in"]
+        "equals": [
+          "pointer"
+        ],
+        "matches": [
+          "pointer"
+        ],
+        "present": [
+          "pointer"
+        ],
+        "pointer": [
+          "in"
+        ],
+        "event": [
+          "in"
+        ]
       },
       "additionalProperties": false
     },
     "work_report": {
       "type": "object",
-      "required": ["measure", "in"],
+      "required": [
+        "measure",
+        "in"
+      ],
       "properties": {
+        "framing": {
+          "description": "Applies only to answers with this framing",
+          "$ref": "#/$defs/framing"
+        },
         "measure": {
           "$ref": "#/$defs/measure"
         },
         "in": {
-          "enum": ["body", "last-line", "last-event", "header"]
+          "description": "Where the value is: the request, the body, a header, or the last or any NDJSON line or SSE event (for any, the last match counts)",
+          "enum": [
+            "request",
+            "body",
+            "header",
+            "last-line",
+            "any-line",
+            "last-event",
+            "any-event"
+          ]
         },
         "event": {
           "type": "string"
@@ -303,7 +471,10 @@
         "request": {
           "description": "How the caller asks for the report, when it must",
           "type": "object",
-          "required": ["pointer", "value"],
+          "required": [
+            "pointer",
+            "value"
+          ],
           "properties": {
             "pointer": {
               "$ref": "#/$defs/pointer"
@@ -311,24 +482,50 @@
             "value": {}
           },
           "additionalProperties": false
+        },
+        "aggregate": {
+          "description": "value (default): the number at pointer. count: how many values the pointer names, such as images in a list. sum: the numbers it names, added. length: the total length of the strings it names, such as characters of input text",
+          "enum": [
+            "value",
+            "count",
+            "sum",
+            "length"
+          ]
         }
       },
       "anyOf": [
-        {"required": ["pointer"]},
-        {"required": ["header"]}
+        {
+          "required": [
+            "pointer"
+          ]
+        },
+        {
+          "required": [
+            "header"
+          ]
+        }
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "One thing the runner reports about the work. Reports of the same measure add up"
     },
     "input": {
       "type": "object",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
         "field": {
           "description": "Where the value sits in the request body; absent means the whole body",
           "$ref": "#/$defs/pointer"
         },
         "kind": {
-          "enum": ["inline", "body", "url", "storage-grant", "trickle"]
+          "enum": [
+            "inline",
+            "body",
+            "url",
+            "storage-grant",
+            "trickle"
+          ]
         },
         "media_types": {
           "type": "array",
@@ -342,14 +539,20 @@
         },
         "origin": {
           "description": "url: public, or deployment (only the deployment's own origins, so the profile is private)",
-          "enum": ["public", "deployment"]
+          "enum": [
+            "public",
+            "deployment"
+          ]
         },
         "sha256_field": {
           "description": "url: where the caller may give the content's sha256",
           "$ref": "#/$defs/pointer"
         },
         "grant": {
-          "enum": ["s3-post-policy", "presigned-put"]
+          "enum": [
+            "s3-post-policy",
+            "presigned-put"
+          ]
         },
         "channel": {
           "type": "string",
@@ -362,24 +565,98 @@
         }
       },
       "allOf": [
-        {"if": {"properties": {"kind": {"const": "inline"}}}, "then": {"required": ["max_bytes"]}},
-        {"if": {"properties": {"kind": {"const": "body"}}}, "then": {"required": ["media_types"]}},
-        {"if": {"properties": {"kind": {"const": "url"}}}, "then": {"required": ["origin"]}},
-        {"if": {"properties": {"kind": {"const": "storage-grant"}}}, "then": {"required": ["grant"]}},
-        {"if": {"properties": {"kind": {"const": "trickle"}}}, "then": {"required": ["channel", "media_types"]}}
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "inline"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "max_bytes"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "body"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "media_types"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "url"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "origin"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "storage-grant"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "grant"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "trickle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "channel",
+              "media_types"
+            ]
+          }
+        }
       ],
       "additionalProperties": false
     },
     "output": {
       "type": "object",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
         "field": {
           "description": "Where the value sits in the response body; absent means the whole body",
           "$ref": "#/$defs/pointer"
         },
         "kind": {
-          "enum": ["inline", "body", "url", "storage-grant", "trickle"]
+          "enum": [
+            "inline",
+            "body",
+            "url",
+            "storage-grant",
+            "trickle"
+          ]
         },
         "media_types": {
           "type": "array",
@@ -407,7 +684,10 @@
           "additionalProperties": false
         },
         "grant": {
-          "enum": ["s3-post-policy", "presigned-put"]
+          "enum": [
+            "s3-post-policy",
+            "presigned-put"
+          ]
         },
         "completion_record": {
           "description": "storage-grant: the key, under the granted prefix, written last",
@@ -425,28 +705,108 @@
         }
       },
       "allOf": [
-        {"if": {"properties": {"kind": {"const": "inline"}}}, "then": {"required": ["max_bytes"]}},
-        {"if": {"properties": {"kind": {"const": "body"}}}, "then": {"required": ["media_types"]}},
-        {"if": {"properties": {"kind": {"const": "url"}}}, "then": {"required": ["expires"]}},
-        {"if": {"properties": {"kind": {"const": "storage-grant"}}}, "then": {"required": ["grant", "completion_record"]}},
-        {"if": {"properties": {"kind": {"const": "trickle"}}}, "then": {"required": ["channel", "media_types"]}}
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "inline"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "max_bytes"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "body"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "media_types"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "url"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "expires"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "storage-grant"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "grant",
+              "completion_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "trickle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "channel",
+              "media_types"
+            ]
+          }
+        }
       ],
       "additionalProperties": false
     },
     "session": {
       "description": "For a persistent profile's session endpoint",
       "type": "object",
-      "required": ["channels", "idle_timeout_s"],
+      "required": [
+        "channels"
+      ],
       "properties": {
+        "stop": {
+          "description": "The operationId of the operation that stops a session",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
         "channels": {
           "type": "object",
           "minProperties": 1,
           "additionalProperties": {
             "type": "object",
-            "required": ["direction", "media_type"],
+            "required": [
+              "direction",
+              "media_type"
+            ],
             "properties": {
               "direction": {
-                "enum": ["in", "out"]
+                "enum": [
+                  "in",
+                  "out"
+                ]
               },
               "media_type": {
                 "type": "string",
@@ -466,7 +826,10 @@
         },
         "events": {
           "type": "object",
-          "required": ["channel", "schema"],
+          "required": [
+            "channel",
+            "schema"
+          ],
           "properties": {
             "channel": {
               "type": "string",
@@ -493,6 +856,7 @@
           }
         },
         "idle_timeout_s": {
+          "description": "Required before a persistent runner may be candidate",
           "type": "integer",
           "minimum": 1
         },
@@ -506,10 +870,18 @@
     "media": {
       "description": "The x-media object on a schema field that carries media",
       "type": "object",
-      "required": ["by"],
+      "required": [
+        "by"
+      ],
       "properties": {
         "by": {
-          "enum": ["inline", "body", "url", "storage-grant", "trickle"]
+          "enum": [
+            "inline",
+            "body",
+            "url",
+            "storage-grant",
+            "trickle"
+          ]
         },
         "accept": {
           "description": "Media types the field accepts",
@@ -520,6 +892,70 @@
         },
         "type": {
           "description": "The media type the field carries",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "framing": {
+      "description": "How an answer is framed: json, sse (text/event-stream), ndjson (application/x-ndjson) or binary. The answer's content type says which one a given answer uses",
+      "enum": [
+        "json",
+        "sse",
+        "ndjson",
+        "binary"
+      ]
+    },
+    "recovery": {
+      "description": "How a caller collects a result whose answer was lost, for an adapter in front of a queued backend",
+      "type": "object",
+      "required": [
+        "request_id"
+      ],
+      "properties": {
+        "request_id": {
+          "description": "Where the answer carries the backend's request ID",
+          "type": "object",
+          "required": [
+            "in"
+          ],
+          "properties": {
+            "in": {
+              "enum": [
+                "header",
+                "body",
+                "last-line",
+                "last-event"
+              ]
+            },
+            "header": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pointer": {
+              "$ref": "#/$defs/pointer"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "header"
+              ]
+            },
+            {
+              "required": [
+                "pointer"
+              ]
+            }
+          ],
+          "additionalProperties": false
+        },
+        "collect": {
+          "description": "The operationId of the operation that returns the result for a request ID",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "note": {
           "type": "string"
         }
       },

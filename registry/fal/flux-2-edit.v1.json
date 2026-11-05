@@ -1,0 +1,641 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.flux-2-edit.v1",
+    "version": "1",
+    "description": "fal endpoint fal-ai/flux-2/edit, model fal:fal-ai/flux-2/edit, through the Livepeer fal route adapter. The request and output schemas are fal's own, from its public queue OpenAPI (x-source), with long descriptions shortened and examples and fal's UI hints left out. Behavior is fal.queue.v1's.",
+    "x-source": {
+      "endpoint_id": "fal-ai/flux-2/edit",
+      "openapi_url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/flux-2/edit",
+      "sha256": "d8802f4b90eead8161de05316e5a604b9f5f1a54796c2d097f06430890c6b3c5"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run fal endpoint fal-ai/flux-2/edit",
+        "description": "The body is fal's input for fal-ai/flux-2/edit, forwarded to fal unchanged; a success answer carries fal's output under `output`. Behaves as fal.queue.v1 describes. Each URL output pointer names the URL itself, and a `*` stands for every item of a list. URL fields nested deeper aren't listed in inputs or outputs; the schemas show them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Flux2EditInput"
+              },
+              "examples": {
+                "fal": {
+                  "summary": "Built from fal's own example and default values",
+                  "value": {
+                    "prompt": "Change his clothes to casual suit and tie",
+                    "image_urls": [
+                      "https://storage.googleapis.com/falserverless/example_inputs/flux2_dev_edit_input.png"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            },
+            {
+              "field": "/image_urls/*",
+              "kind": "url",
+              "origin": "public",
+              "media_types": [
+                "image/*"
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/output/images/*/url",
+              "kind": "url",
+              "media_types": [
+                "image/*"
+              ],
+              "expires": {
+                "after_s": 604800
+              }
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          },
+          "work_reports": [
+            {
+              "measure": "images",
+              "in": "body",
+              "pointer": "/output/images/*/url",
+              "aggregate": "count"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Flux2EditInput": {
+        "properties": {
+          "acceleration": {
+            "default": "regular",
+            "description": "The acceleration level to use for the image generation.",
+            "enum": [
+              "none",
+              "regular",
+              "high"
+            ],
+            "title": "Acceleration",
+            "type": "string"
+          },
+          "enable_prompt_expansion": {
+            "default": false,
+            "description": "If set to true, the prompt will be expanded for better results.",
+            "title": "Enable Prompt Expansion",
+            "type": "boolean"
+          },
+          "enable_safety_checker": {
+            "default": true,
+            "description": "If set to true, the safety checker will be enabled. Disabling it requires account authorization; unauthorized requests are always checked, and images flagged as unsafe are returned as black images.",
+            "title": "Enable Safety Checker",
+            "type": "boolean"
+          },
+          "guidance_scale": {
+            "default": 2.5,
+            "description": "Guidance Scale is a measure of how close you want the model to stick to your prompt when looking for a related image to show you.",
+            "maximum": 20,
+            "minimum": 0,
+            "title": "Guidance Scale",
+            "type": "number"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSize"
+              },
+              {
+                "enum": [
+                  "square_hd",
+                  "square",
+                  "portrait_4_3",
+                  "portrait_16_9",
+                  "landscape_4_3",
+                  "landscape_16_9"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The size of the image to generate. The width and height must be between 512 and 2048 pixels.",
+            "title": "Image Size"
+          },
+          "image_urls": {
+            "description": "The URLs of the images for editing. A maximum of 4 images are allowed, if more are provided, only the first 4 will be used.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Image URLs",
+            "type": "array"
+          },
+          "num_images": {
+            "default": 1,
+            "description": "The number of images to generate.",
+            "maximum": 4,
+            "minimum": 1,
+            "title": "Number of Images",
+            "type": "integer"
+          },
+          "num_inference_steps": {
+            "default": 28,
+            "description": "The number of inference steps to perform.",
+            "maximum": 50,
+            "minimum": 4,
+            "title": "Number of Inference Steps",
+            "type": "integer"
+          },
+          "output_format": {
+            "default": "png",
+            "description": "The format of the generated image.",
+            "enum": [
+              "jpeg",
+              "png",
+              "webp"
+            ],
+            "title": "Output Format",
+            "type": "string"
+          },
+          "prompt": {
+            "description": "The prompt to edit the image.",
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The seed to use for the generation. If not provided, a random seed will be used.",
+            "title": "Seed"
+          },
+          "sync_mode": {
+            "default": false,
+            "description": "If `True`, the media will be returned as a data URI and the output data won't be available in the request history.",
+            "title": "Sync Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Flux2EditImageInput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "prompt",
+          "guidance_scale",
+          "seed",
+          "num_inference_steps",
+          "image_size",
+          "num_images",
+          "acceleration",
+          "enable_prompt_expansion",
+          "sync_mode",
+          "enable_safety_checker",
+          "output_format",
+          "image_urls"
+        ]
+      },
+      "Flux2EditOutput": {
+        "properties": {
+          "has_nsfw_concepts": {
+            "description": "Whether the generated images contain NSFW concepts.",
+            "items": {
+              "type": "boolean"
+            },
+            "title": "Has Nsfw Concepts",
+            "type": "array"
+          },
+          "images": {
+            "description": "The edited images",
+            "items": {
+              "$ref": "#/components/schemas/ImageFile"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "prompt": {
+            "description": "The prompt used for generating the image.",
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "description": "Seed of the generated Image. It will be the same value of the one passed in the input or the randomly generated that was used in case none was passed.",
+            "title": "Seed",
+            "type": "integer"
+          },
+          "timings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Timings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "images",
+          "timings",
+          "seed",
+          "has_nsfw_concepts",
+          "prompt"
+        ],
+        "title": "Flux2EditImageOutput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "images",
+          "timings",
+          "seed",
+          "has_nsfw_concepts",
+          "prompt"
+        ]
+      },
+      "ImageFile": {
+        "properties": {
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The mime type of the file.",
+            "title": "Content Type"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name of the file. It will be auto-generated if not provided.",
+            "title": "File Name"
+          },
+          "file_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The size of the file in bytes.",
+            "title": "File Size"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The height of the image",
+            "title": "Height"
+          },
+          "url": {
+            "description": "The URL where the file can be downloaded from.",
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The width of the image",
+            "title": "Width"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ImageFile",
+        "type": "object",
+        "x-fal-order-properties": [
+          "url",
+          "content_type",
+          "file_name",
+          "file_size",
+          "width",
+          "height"
+        ]
+      },
+      "ImageSize": {
+        "properties": {
+          "height": {
+            "default": 512,
+            "description": "The height of the generated image.",
+            "exclusiveMinimum": 0,
+            "maximum": 14142,
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "default": 512,
+            "description": "The width of the generated image.",
+            "exclusiveMinimum": 0,
+            "maximum": 14142,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "title": "ImageSize",
+        "type": "object",
+        "x-fal-order-properties": [
+          "width",
+          "height"
+        ]
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "const": "fal-ai/flux-2/edit",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Flux2EditOutput"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "const": "fal-ai/flux-2/edit",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.flux-2-edit.v1",
+    "kind": "profile",
+    "extends": "fal.queue.v1",
+    "mode": "single-shot",
+    "capabilities": [
+      "image-edit"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

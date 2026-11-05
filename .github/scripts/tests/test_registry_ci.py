@@ -351,3 +351,17 @@ def test_the_spec_example_profile_ids_are_valid() -> None:
         assert ci.PROFILE_ID.match(profile), profile
     for bad in ("openai.chat", "openai.v1", "OpenAI.chat.v1", "openai.chat.v0", "open-ai.chat.v1", "openai..chat.v1"):
         assert not ci.PROFILE_ID.match(bad), bad
+
+
+def test_livepeer_entries_agree_with_the_schemas() -> None:
+    """The shared livepeer.* entries restate parts of the schemas; they must not drift apart."""
+    entry_schema = json.loads((ROOT / "schemas/registry-entry.v1.schema.json").read_text())
+    errors = json.loads((ROOT / "registry/livepeer/errors.v1.json").read_text())
+    kinds = [k["const"] for k in errors["components"]["schemas"]["ErrorKind"]["oneOf"]]
+    assert kinds == entry_schema["$defs"]["error_kind"]["enum"]
+
+    report_schema = json.loads((ROOT / "schemas/conformance-report.v1.schema.json").read_text())
+    for key in ("$schema", "$id"):
+        report_schema.pop(key)
+    report_entry = json.loads((ROOT / "registry/livepeer/conformance-report.v1.json").read_text())
+    assert report_entry["components"]["schemas"]["ConformanceReport"] == report_schema

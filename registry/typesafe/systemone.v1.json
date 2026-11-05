@@ -1,0 +1,791 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "typesafe.systemone.v1",
+    "version": "1",
+    "description": "TypeSafe System One decisions: a state and named, typed questions in, a probability for each allowed answer out, with no generated text. Drafted from NE-Build-Track/inference-gateway at e5b47d8."
+  },
+  "paths": {
+    "/v1/systemone": {
+      "post": {
+        "operationId": "systemone",
+        "summary": "Answer typed questions with probabilities",
+        "description": "Answers named questions about a state with probabilities: noul (yes or no), choice, score and box. Images travel inline in images, as a base64 data URL, bare base64, or an object holding either, and their bytes are PNG, JPEG, GIF or WebP; runners differ in which of these forms they accept. Audio, video, files and assets aren't part of this profile, and the runner fetches no URLs and opens no paths. The answer is one JSON object, never a stream, and output_tokens may be zero. The whole request is at most 8 MiB.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemOneRequest"
+              },
+              "examples": {
+                "noul": {
+                  "value": {
+                    "model": "Cloudflare/clef-flash",
+                    "state": "The parcel arrived damaged.",
+                    "questions": {
+                      "needs_help": {
+                        "type": "noul",
+                        "instructions": "Does the customer need help?"
+                      }
+                    }
+                  }
+                },
+                "choice_and_score": {
+                  "value": {
+                    "model": "Cloudflare/clef-flash",
+                    "state": {
+                      "subject": "Duplicate charge",
+                      "message": "I was charged twice. Please help."
+                    },
+                    "questions": {
+                      "tone": {
+                        "type": "choice",
+                        "instructions": "What is the tone?",
+                        "criteria": {
+                          "calm": null,
+                          "angry": null
+                        }
+                      },
+                      "urgency": {
+                        "type": "score",
+                        "instructions": "How urgent is this message?",
+                        "criteria": [
+                          "Can wait",
+                          "Needs attention this week",
+                          "Needs attention today"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "image": {
+                  "value": {
+                    "model": "Cloudflare/clef-flash",
+                    "state": "Is the parcel in this photo damaged?",
+                    "questions": {
+                      "damaged": {
+                        "type": "noul",
+                        "instructions": "Is it damaged?"
+                      }
+                    },
+                    "images": [
+                      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+                    ]
+                  }
+                },
+                "bare_image": {
+                  "value": {
+                    "model": "Cloudflare/clef-flash",
+                    "state": "Is the parcel in this photo damaged?",
+                    "questions": {
+                      "damaged": {
+                        "type": "noul",
+                        "instructions": "Is it damaged?"
+                      }
+                    },
+                    "images": [
+                      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The answers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemOneResponse"
+                },
+                "examples": {
+                  "noul": {
+                    "value": {
+                      "model": "Cloudflare/clef-flash",
+                      "answers": {
+                        "needs_help": {
+                          "type": "noul",
+                          "noul": 0.91
+                        }
+                      },
+                      "usage": {
+                        "input_tokens": 160,
+                        "output_tokens": 0
+                      }
+                    }
+                  },
+                  "choice_and_score": {
+                    "value": {
+                      "model": "Cloudflare/clef-flash",
+                      "answers": {
+                        "tone": {
+                          "type": "choice",
+                          "choice": "calm",
+                          "confidence": 0.82,
+                          "probabilities": {
+                            "calm": 0.82,
+                            "angry": 0.18
+                          }
+                        },
+                        "urgency": {
+                          "type": "score",
+                          "score": 1.7,
+                          "confidence": 0.8,
+                          "legend": {
+                            "0": "Can wait",
+                            "1": "Needs attention this week",
+                            "2": "Needs attention today"
+                          },
+                          "probabilities": {
+                            "0": 0.1,
+                            "1": 0.1,
+                            "2": 0.8
+                          }
+                        }
+                      },
+                      "usage": {
+                        "input_tokens": 212,
+                        "output_tokens": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                },
+                "examples": {
+                  "validation": {
+                    "value": {
+                      "detail": [
+                        {
+                          "loc": [
+                            "body",
+                            "questions"
+                          ],
+                          "msg": "Field required",
+                          "type": "missing"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/type",
+              "equals": "exceed_context_size_error",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as llama.cpp reports it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as vLLM and Ollama report it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as SGLang reports it"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "The request is malformed or holds a value the runner refuses"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "The runner doesn't serve the requested model; no work started"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The request is larger than a limit the runner enforces, such as limits.max_input_bytes"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid",
+              "note": "A request validation error, as FastAPI-based servers report it"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "The runner is at capacity; no work started"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "The runner is loading, or its queue is full; no work started"
+            }
+          ],
+          "work_reports": [
+            {
+              "framing": "json",
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/input_tokens"
+            },
+            {
+              "framing": "json",
+              "measure": "output_tokens",
+              "in": "body",
+              "pointer": "/usage/output_tokens"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/state",
+              "kind": "inline",
+              "max_bytes": 8388608,
+              "media_types": [
+                "text/plain",
+                "application/json"
+              ]
+            },
+            {
+              "field": "/images",
+              "kind": "inline",
+              "max_bytes": 8388608,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/gif",
+                "image/webp"
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/answers",
+              "kind": "inline",
+              "max_bytes": 8388608
+            }
+          ],
+          "attempts": "gateway"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SystemOneRequest": {
+        "description": "A decision request: a state and the questions to answer about it",
+        "type": "object",
+        "required": [
+          "model",
+          "state",
+          "questions"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model name the runner serves",
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "description": "The content every question refers to: text, or a JSON object or array",
+            "type": [
+              "string",
+              "object",
+              "array"
+            ]
+          },
+          "questions": {
+            "description": "The questions, each under a name the answer uses",
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Question"
+            }
+          },
+          "images": {
+            "description": "Images the questions refer to, inline. Runners differ in which inline form they accept",
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/InlineImage"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "url"
+                  ],
+                  "properties": {
+                    "url": {
+                      "$ref": "#/components/schemas/InlineImage"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "InlineImage": {
+        "description": "A PNG, JPEG, GIF or WebP image as a base64 data URL or bare base64. Never a path or a URL",
+        "type": "string",
+        "pattern": "^(data:image/[a-z0-9.+-]+;base64,)?(iVBORw0KGgo|/9j/|R0lGOD[dl]h|UklGR[A-Za-z0-9+/]{6}XRUJQ)[A-Za-z0-9+/]*={0,2}$",
+        "x-media": {
+          "by": "inline",
+          "accept": [
+            "image/png",
+            "image/jpeg",
+            "image/gif",
+            "image/webp"
+          ]
+        }
+      },
+      "Question": {
+        "oneOf": [
+          {
+            "description": "A yes or no question, or a statement to judge true or false",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "const": "noul"
+              },
+              "instructions": {
+                "type": [
+                  "string",
+                  "object",
+                  "array",
+                  "null"
+                ]
+              },
+              "criteria": {
+                "description": "What counts as true and as false",
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "true": {
+                    "type": [
+                      "string",
+                      "object",
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "false": {
+                    "type": [
+                      "string",
+                      "object",
+                      "array",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A choice among named options",
+            "type": "object",
+            "required": [
+              "type",
+              "criteria"
+            ],
+            "properties": {
+              "type": {
+                "const": "choice"
+              },
+              "instructions": {
+                "type": [
+                  "string",
+                  "object",
+                  "array",
+                  "null"
+                ]
+              },
+              "criteria": {
+                "description": "Each option's name, with a description of when it applies or null",
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "object",
+                    "array",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A rating on an ordered scale",
+            "type": "object",
+            "required": [
+              "type",
+              "criteria"
+            ],
+            "properties": {
+              "type": {
+                "const": "score"
+              },
+              "instructions": {
+                "type": [
+                  "string",
+                  "object",
+                  "array",
+                  "null"
+                ]
+              },
+              "criteria": {
+                "description": "The levels in order; each one's position, from zero, is its score",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "description": "Text, or a JSON object or array",
+                  "type": [
+                    "string",
+                    "object",
+                    "array"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A box locating something in the image",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "const": "box"
+              },
+              "instructions": {
+                "type": [
+                  "string",
+                  "object",
+                  "array",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SystemOneResponse": {
+        "description": "The answers, under the names the questions used, and token usage",
+        "type": "object",
+        "required": [
+          "model",
+          "answers",
+          "usage"
+        ],
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "answers": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Answer"
+            }
+          },
+          "usage": {
+            "description": "Token counts. output_tokens may be zero",
+            "type": "object",
+            "required": [
+              "input_tokens",
+              "output_tokens"
+            ],
+            "properties": {
+              "input_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "output_tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "Answer": {
+        "oneOf": [
+          {
+            "description": "The probability of yes, or of true",
+            "type": "object",
+            "required": [
+              "type",
+              "noul"
+            ],
+            "properties": {
+              "type": {
+                "const": "noul"
+              },
+              "noul": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          },
+          {
+            "description": "The most probable option, and each option's probability",
+            "type": "object",
+            "required": [
+              "type",
+              "choice",
+              "confidence",
+              "probabilities"
+            ],
+            "properties": {
+              "type": {
+                "const": "choice"
+              },
+              "choice": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "probabilities": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          },
+          {
+            "description": "The expected score, the levels by score, and each level's probability",
+            "type": "object",
+            "required": [
+              "type",
+              "score",
+              "confidence",
+              "legend",
+              "probabilities"
+            ],
+            "properties": {
+              "type": {
+                "const": "score"
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "legend": {
+                "type": "object"
+              },
+              "probabilities": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          },
+          {
+            "description": "A box's edges as fractions of the image's height and width",
+            "type": "object",
+            "required": [
+              "type",
+              "box",
+              "confidence"
+            ],
+            "properties": {
+              "type": {
+                "const": "box"
+              },
+              "box": {
+                "type": "object",
+                "required": [
+                  "top",
+                  "bottom",
+                  "left",
+                  "right"
+                ],
+                "properties": {
+                  "top": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "bottom": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "left": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "right": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                }
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        ]
+      },
+      "ErrorBody": {
+        "description": "An error answer. FastAPI-based servers return detail, usually a list of validation errors; others nest an error object, or put the fields at the top level with object set to error",
+        "type": "object",
+        "anyOf": [
+          {
+            "required": [
+              "detail"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          },
+          {
+            "required": [
+              "object",
+              "message"
+            ]
+          }
+        ],
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                  ],
+                  "properties": {
+                    "loc": {
+                      "type": "array",
+                      "items": {
+                        "type": [
+                          "string",
+                          "integer"
+                        ]
+                      }
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "object",
+              "string"
+            ]
+          },
+          "object": {
+            "const": "error"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "typesafe.systemone.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "decision"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

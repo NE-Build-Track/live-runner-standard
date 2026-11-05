@@ -1,0 +1,729 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.ffmpeg-api-metadata.v1",
+    "version": "1",
+    "description": "fal endpoint fal-ai/ffmpeg-api/metadata, model fal:fal-ai/ffmpeg-api/metadata, through the Livepeer fal route adapter. The request and output schemas are fal's own, from its public queue OpenAPI (x-source), with long descriptions shortened and examples and fal's UI hints left out. Behavior is fal.queue.v1's.",
+    "x-source": {
+      "endpoint_id": "fal-ai/ffmpeg-api/metadata",
+      "openapi_url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/ffmpeg-api/metadata",
+      "sha256": "c2cdf6fefc88480cc1aa53e3d96c733f814c9fb52fbba7eb2bf57cb891216a41"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run fal endpoint fal-ai/ffmpeg-api/metadata",
+        "description": "The body is fal's input for fal-ai/ffmpeg-api/metadata, forwarded to fal unchanged; a success answer carries fal's output under `output`. Behaves as fal.queue.v1 describes. Each URL output pointer names the URL itself, and a `*` stands for every item of a list. URL fields nested deeper aren't listed in inputs or outputs; the schemas show them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FfmpegApiMetadataInput"
+              },
+              "examples": {
+                "fal": {
+                  "summary": "Built from fal's own example and default values, with placeholders where fal gives none",
+                  "value": {
+                    "media_url": "https://example.com/file"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            },
+            {
+              "field": "/media_url",
+              "kind": "url",
+              "origin": "public"
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/output/media/url",
+              "kind": "url",
+              "expires": {
+                "after_s": 604800
+              }
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Audio": {
+        "properties": {
+          "bitrate": {
+            "description": "Overall bitrate of the media in bits per second",
+            "title": "Bitrate",
+            "type": "integer"
+          },
+          "channels": {
+            "description": "Number of audio channels",
+            "title": "Channels",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "Codec used to encode the media",
+            "title": "Codec",
+            "type": "string"
+          },
+          "container": {
+            "description": "Container format of the media file (e.g., 'mp4', 'mov')",
+            "title": "Container",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "MIME type of the media file",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Duration of the media in seconds",
+            "title": "Duration",
+            "type": "number"
+          },
+          "file_name": {
+            "description": "Original filename of the media",
+            "title": "File Name",
+            "type": "string"
+          },
+          "file_size": {
+            "description": "Size of the file in bytes",
+            "title": "File Size",
+            "type": "integer"
+          },
+          "media_type": {
+            "const": "audio",
+            "default": "audio",
+            "description": "Type of media (always 'audio')",
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sample_rate": {
+            "description": "Audio sample rate in Hz",
+            "title": "Sample Rate",
+            "type": "integer"
+          },
+          "url": {
+            "description": "URL where the media file can be accessed",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "content_type",
+          "file_name",
+          "file_size",
+          "duration",
+          "bitrate",
+          "codec",
+          "container",
+          "channels",
+          "sample_rate"
+        ],
+        "title": "Audio",
+        "type": "object",
+        "x-fal-order-properties": [
+          "media_type",
+          "url",
+          "content_type",
+          "file_name",
+          "file_size",
+          "duration",
+          "bitrate",
+          "codec",
+          "container",
+          "channels",
+          "sample_rate"
+        ]
+      },
+      "AudioTrack": {
+        "properties": {
+          "bitrate": {
+            "description": "Audio bitrate in bits per second",
+            "title": "Bitrate",
+            "type": "integer"
+          },
+          "channels": {
+            "description": "Number of audio channels",
+            "title": "Channels",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "Audio codec used (e.g., 'aac', 'mp3')",
+            "title": "Codec",
+            "type": "string"
+          },
+          "sample_rate": {
+            "description": "Audio sample rate in Hz",
+            "title": "Sample Rate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "codec",
+          "channels",
+          "sample_rate",
+          "bitrate"
+        ],
+        "title": "AudioTrack",
+        "type": "object",
+        "x-fal-order-properties": [
+          "codec",
+          "channels",
+          "sample_rate",
+          "bitrate"
+        ]
+      },
+      "FfmpegApiMetadataInput": {
+        "properties": {
+          "extract_frames": {
+            "default": false,
+            "description": "Whether to extract the start and end frames for videos. Note that when true the request will be slower.",
+            "title": "Extract Frames",
+            "type": "boolean"
+          },
+          "media_url": {
+            "description": "URL of the media file (video or audio) to analyze",
+            "title": "Media Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_url"
+        ],
+        "title": "MetadataInput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "media_url",
+          "extract_frames"
+        ]
+      },
+      "FfmpegApiMetadataOutput": {
+        "properties": {
+          "media": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Video"
+              },
+              {
+                "$ref": "#/components/schemas/Audio"
+              }
+            ],
+            "description": "Metadata for the analyzed media file (either Video or Audio)",
+            "title": "Media"
+          }
+        },
+        "required": [
+          "media"
+        ],
+        "title": "MetadataOutput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "media"
+        ]
+      },
+      "Resolution": {
+        "properties": {
+          "aspect_ratio": {
+            "description": "Display aspect ratio (e.g., '16:9')",
+            "title": "Aspect Ratio",
+            "type": "string"
+          },
+          "height": {
+            "description": "Height of the video in pixels",
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "description": "Width of the video in pixels",
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "aspect_ratio",
+          "width",
+          "height"
+        ],
+        "title": "Resolution",
+        "type": "object",
+        "x-fal-order-properties": [
+          "aspect_ratio",
+          "width",
+          "height"
+        ]
+      },
+      "Video": {
+        "properties": {
+          "audio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AudioTrack"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Audio track information if video has audio"
+          },
+          "bitrate": {
+            "description": "Overall bitrate of the media in bits per second",
+            "title": "Bitrate",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "Codec used to encode the media",
+            "title": "Codec",
+            "type": "string"
+          },
+          "container": {
+            "description": "Container format of the media file (e.g., 'mp4', 'mov')",
+            "title": "Container",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "MIME type of the media file",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Duration of the media in seconds",
+            "title": "Duration",
+            "type": "number"
+          },
+          "end_frame_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL of the extracted last frame",
+            "title": "End Frame Url"
+          },
+          "file_name": {
+            "description": "Original filename of the media",
+            "title": "File Name",
+            "type": "string"
+          },
+          "file_size": {
+            "description": "Size of the file in bytes",
+            "title": "File Size",
+            "type": "integer"
+          },
+          "format": {
+            "$ref": "#/components/schemas/VideoFormat",
+            "description": "Detailed video format information"
+          },
+          "fps": {
+            "description": "Frames per second",
+            "title": "Fps",
+            "type": "integer"
+          },
+          "frame_count": {
+            "description": "Total number of frames in the video",
+            "title": "Frame Count",
+            "type": "integer"
+          },
+          "media_type": {
+            "const": "video",
+            "default": "video",
+            "description": "Type of media (always 'video')",
+            "title": "Media Type",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Resolution",
+            "description": "Video resolution information"
+          },
+          "start_frame_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL of the extracted first frame",
+            "title": "Start Frame Url"
+          },
+          "timebase": {
+            "description": "Time base used for frame timestamps",
+            "title": "Timebase",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL where the media file can be accessed",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "content_type",
+          "file_name",
+          "file_size",
+          "duration",
+          "bitrate",
+          "codec",
+          "container",
+          "fps",
+          "frame_count",
+          "timebase",
+          "resolution",
+          "format"
+        ],
+        "title": "Video",
+        "type": "object",
+        "x-fal-order-properties": [
+          "media_type",
+          "url",
+          "content_type",
+          "file_name",
+          "file_size",
+          "duration",
+          "bitrate",
+          "codec",
+          "container",
+          "fps",
+          "frame_count",
+          "timebase",
+          "resolution",
+          "format",
+          "audio",
+          "start_frame_url",
+          "end_frame_url"
+        ]
+      },
+      "VideoFormat": {
+        "properties": {
+          "bitrate": {
+            "description": "Video bitrate in bits per second",
+            "title": "Bitrate",
+            "type": "integer"
+          },
+          "container": {
+            "description": "Container format of the video",
+            "title": "Container",
+            "type": "string"
+          },
+          "level": {
+            "description": "Codec level (e.g., 4.1)",
+            "title": "Level",
+            "type": "number"
+          },
+          "pixel_format": {
+            "description": "Pixel format used (e.g., 'yuv420p')",
+            "title": "Pixel Format",
+            "type": "string"
+          },
+          "profile": {
+            "description": "Codec profile (e.g., 'main', 'high')",
+            "title": "Profile",
+            "type": "string"
+          },
+          "video_codec": {
+            "description": "Video codec used (e.g., 'h264')",
+            "title": "Video Codec",
+            "type": "string"
+          }
+        },
+        "required": [
+          "container",
+          "video_codec",
+          "profile",
+          "level",
+          "pixel_format",
+          "bitrate"
+        ],
+        "title": "VideoFormat",
+        "type": "object",
+        "x-fal-order-properties": [
+          "container",
+          "video_codec",
+          "profile",
+          "level",
+          "pixel_format",
+          "bitrate"
+        ]
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "const": "fal-ai/ffmpeg-api/metadata",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/FfmpegApiMetadataOutput"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "const": "fal-ai/ffmpeg-api/metadata",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.ffmpeg-api-metadata.v1",
+    "kind": "profile",
+    "extends": "fal.queue.v1",
+    "mode": "single-shot",
+    "capabilities": [
+      "media-tools"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

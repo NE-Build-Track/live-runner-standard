@@ -1,0 +1,635 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "zio.live-transcribe.v1",
+    "version": "1",
+    "description": "Transcribes a live broadcast's audio, read from a Trickle channel, in one session with the model the operator configures, and sends final timed cues on another Trickle channel. Drafted from Ziply.io's runners at 283c77a03ac1a27244dba9b50d3dbaba801adfbb."
+  },
+  "paths": {
+    "/v1/live/start": {
+      "post": {
+        "operationId": "session",
+        "summary": "Start a live captions session",
+        "description": "Answers 201 with the URLs of the session's Trickle channels: source in, cues out. The runner decodes the source's audio to 16 kHz mono, filling gaps in its timestamps with silence, transcribes every 3 s of audio, and sends only final cues, about 4 s after the words plus inference time. An error event ends the session; it maps to base kind internal. The runner serves one session at a time.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveStart"
+              },
+              "examples": {
+                "start": {
+                  "value": {
+                    "schema_version": 1,
+                    "broadcast_id": "bc_7Rk2",
+                    "epoch": 1,
+                    "language": "es",
+                    "start_s": 0.0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The session runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                },
+                "examples": {
+                  "started": {
+                    "value": {
+                      "channels": {
+                        "source": "https://orch.example/ai/trickle/channel_8kQ1-source",
+                        "cues": "https://orch.example/ai/trickle/channel_8kQ1-cues"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused before any work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "invalid or missing: start_s"
+                    }
+                  },
+                  "schema_unsupported": {
+                    "value": {
+                      "kind": "schema_unsupported",
+                      "detail": "schema_version 2; this runner speaks 1"
+                    }
+                  },
+                  "language_unsupported": {
+                    "value": {
+                      "kind": "language_unsupported",
+                      "detail": "this runner does not offer fr"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A session is already running on this runner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "busy": {
+                    "value": {
+                      "kind": "busy",
+                      "detail": "session bc_7Rk2-1 is running"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The orchestrator refused the session's channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "channels_refused": {
+                    "value": {
+                      "kind": "channels_refused",
+                      "detail": "the orchestrator refused the session's channels"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              201
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "Not JSON, or not the request schema"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "An unknown schema_version"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "language_unsupported",
+              "kind": "input_unsupported",
+              "note": "A language the runner does not offer"
+            },
+            {
+              "status": 409,
+              "kind": "busy",
+              "note": "A session is already running"
+            },
+            {
+              "status": 502,
+              "kind": "unavailable",
+              "note": "channels_refused: the orchestrator refused the session's channels; no work started"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "trickle",
+              "channel": "source",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            }
+          ],
+          "outputs": [
+            {
+              "kind": "trickle",
+              "channel": "cues",
+              "media_types": [
+                "application/json"
+              ],
+              "max_segment_bytes": 10000000
+            }
+          ],
+          "session": {
+            "channels": {
+              "source": {
+                "direction": "in",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "MPEG-TS pieces of the broadcast as they arrive; only the first audio stream is used"
+              },
+              "cues": {
+                "direction": "out",
+                "media_type": "application/json",
+                "max_segment_bytes": 10000000,
+                "timing": "One event per segment; cues about every 3 s of audio while speech is heard"
+              }
+            },
+            "stop": "stop",
+            "events": {
+              "channel": "cues",
+              "schema": "#/components/schemas/Event",
+              "counter": "/epoch"
+            },
+            "drain_timeout_s": 20
+          }
+        }
+      }
+    },
+    "/v1/live/stop": {
+      "post": {
+        "operationId": "stop",
+        "summary": "Stop the live captions session",
+        "description": "Stops the session that the orchestrator's Livepeer-Session-Id header names, and answers once it has ended. With drain true, the default, the runner waits up to 20 s for the source to end and sends the last cues and a drained event; a source still open then ends the session without them. With drain false it stops at once, with no last cues or drained event.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveStop"
+              },
+              "examples": {
+                "drain": {
+                  "value": {
+                    "drain": true
+                  }
+                },
+                "now": {
+                  "value": {
+                    "drain": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The session has ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopResponse"
+                },
+                "examples": {
+                  "stopped": {
+                    "value": {
+                      "stopped": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not a stop request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopRefusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "the body takes only drain"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "This runner has no such session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopRefusal"
+                },
+                "examples": {
+                  "session_unknown": {
+                    "value": {
+                      "kind": "session_unknown",
+                      "detail": "this runner has no such session"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "The body takes only drain"
+            },
+            {
+              "status": 404,
+              "kind": "input_invalid",
+              "note": "session_unknown: the session had already ended"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CuesEvent": {
+        "description": "Final cues: words older than 1 s, which later audio can no longer change. Times are on the broadcast's timeline",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "cues"
+        ],
+        "properties": {
+          "type": {
+            "const": "cues"
+          },
+          "epoch": {
+            "type": "integer"
+          },
+          "cues": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "start_s",
+                "end_s",
+                "text"
+              ],
+              "properties": {
+                "start_s": {
+                  "type": "number"
+                },
+                "end_s": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "cues",
+            "epoch": 1,
+            "cues": [
+              {
+                "start_s": 21.0,
+                "end_s": 23.5,
+                "text": "Hola a todos."
+              }
+            ]
+          }
+        ]
+      },
+      "DrainedEvent": {
+        "description": "The source ended and the last cues are out",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch"
+        ],
+        "properties": {
+          "type": {
+            "const": "drained"
+          },
+          "epoch": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "drained",
+            "epoch": 1
+          }
+        ]
+      },
+      "ErrorEvent": {
+        "description": "The session failed and ended; kind names the failure's type",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "kind"
+        ],
+        "properties": {
+          "type": {
+            "const": "error"
+          },
+          "epoch": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "error",
+            "epoch": 1,
+            "kind": "RuntimeError"
+          }
+        ]
+      },
+      "Event": {
+        "description": "One event on the cues channel, one JSON object per Trickle segment",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CuesEvent"
+          },
+          {
+            "$ref": "#/components/schemas/WarningEvent"
+          },
+          {
+            "$ref": "#/components/schemas/DrainedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "cues": "#/components/schemas/CuesEvent",
+            "warning": "#/components/schemas/WarningEvent",
+            "drained": "#/components/schemas/DrainedEvent",
+            "error": "#/components/schemas/ErrorEvent"
+          }
+        }
+      },
+      "LiveStart": {
+        "description": "One epoch of a broadcast's captions, starting at start_s on the broadcast's timeline",
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "description": "The wire contract's version"
+          },
+          "broadcast_id": {
+            "type": "string",
+            "description": "Opaque; the broadcast this session captions"
+          },
+          "epoch": {
+            "type": "integer",
+            "description": "The session's epoch; cues, drained and error events carry it"
+          },
+          "language": {
+            "type": "string",
+            "description": "A language code the runner offers; anything else is refused with language_unsupported"
+          },
+          "start_s": {
+            "minimum": 0,
+            "type": "number",
+            "description": "Where the session's audio begins on the broadcast's timeline, in seconds; cue times count from it"
+          }
+        },
+        "required": [
+          "schema_version",
+          "broadcast_id",
+          "epoch",
+          "language",
+          "start_s"
+        ],
+        "type": "object"
+      },
+      "LiveStop": {
+        "properties": {
+          "drain": {
+            "default": true,
+            "type": "boolean",
+            "description": "true: wait for the source to end and send the last cues and a drained event. false: stop now"
+          }
+        },
+        "type": "object"
+      },
+      "StartRefusal": {
+        "description": "A refused start; no session runs",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "schema_unsupported",
+              "language_unsupported",
+              "busy",
+              "channels_refused"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartResponse": {
+        "description": "The session's Trickle channels",
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "object",
+            "required": [
+              "source",
+              "cues"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "format": "uri",
+                "description": "The channel the caller publishes the broadcast to",
+                "x-media": {
+                  "by": "trickle",
+                  "type": "video/mp2t"
+                }
+              },
+              "cues": {
+                "type": "string",
+                "format": "uri",
+                "description": "The channel of the session's events"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "StopRefusal": {
+        "description": "A refused stop",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "session_unknown"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StopResponse": {
+        "type": "object",
+        "required": [
+          "stopped"
+        ],
+        "properties": {
+          "stopped": {
+            "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarningEvent": {
+        "description": "The session fell more than 12 s behind and skipped audio; the skipped stretch has no cues. Carries no epoch",
+        "type": "object",
+        "required": [
+          "type",
+          "kind",
+          "skipped_s"
+        ],
+        "properties": {
+          "type": {
+            "const": "warning"
+          },
+          "kind": {
+            "const": "fell_behind"
+          },
+          "skipped_s": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "warning",
+            "kind": "fell_behind",
+            "skipped_s": 6.0
+          }
+        ]
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "zio.live-transcribe.v1",
+    "kind": "profile",
+    "mode": "persistent",
+    "capabilities": [
+      "live-transcription"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "One session at a time on one GPU, sharing one loaded model with the single-shot form, for its deployment's gateway. It sets no idle timeout, which candidate admission requires"
+    },
+    "attempts": "caller",
+    "readiness": "The operator's model loads and transcribes one second of silence in the first language the runner offers",
+    "cost_hint": {
+      "note": "A session runs in real time, so runner time is the session's length"
+    }
+  }
+}

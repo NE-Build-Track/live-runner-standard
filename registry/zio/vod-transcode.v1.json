@@ -1,0 +1,1228 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "zio.vod-transcode.v1",
+    "version": "1",
+    "description": "Encodes a stored video, fetched from the deployment's own storage, into H.264 HLS renditions on a named encoding profile, and uploads them under a storage prefix the caller grants. Drafted from Ziply.io's runners at 283c77a03ac1a27244dba9b50d3dbaba801adfbb."
+  },
+  "paths": {
+    "/v1/transcode": {
+      "post": {
+        "operationId": "transcode",
+        "summary": "Transcode a stored video into HLS renditions, or re-encode a live recording's gap",
+        "description": "Answers 200 at once and streams NDJSON: progress lines, at least one every 10 s, then one result line, always last. Every object is written under output.prefix. On success, and only then, the runner writes the result's descriptor to descriptor.json under that prefix as its last write, so an attempt whose stream was lost can be settled from storage. The runner does not deduplicate: each attempt runs again, and objects under a reused prefix are overwritten.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TranscodeRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RepairRequest"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "profile",
+                  "mapping": {
+                    "h264-hls-1080": "#/components/schemas/TranscodeRequest",
+                    "h264-hls-live-repair": "#/components/schemas/RepairRequest"
+                  }
+                }
+              },
+              "examples": {
+                "transcode": {
+                  "value": {
+                    "schema_version": 1,
+                    "work_id": "ast_4Tq9",
+                    "attempt_id": "att_1",
+                    "generation": "gen_01",
+                    "profile": "h264-hls-1080",
+                    "deadline_s": 3300,
+                    "input": {
+                      "url": "https://media.zio.example/src/env_prod/up_7Rk2?X-Signature=abc",
+                      "expires_at": "2026-11-03T10:12:43Z",
+                      "size_bytes": 1843200512,
+                      "sha256": "9f1c000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    "output": {
+                      "prefix": "out/env_prod/ast_4Tq9/gen_01/",
+                      "grant": {
+                        "kind": "s3-post-policy",
+                        "url": "https://media.zio.example/",
+                        "fields": {
+                          "policy": "eyJleHBpcmF0aW9uIjoi",
+                          "x-amz-signature": "5d1f0c"
+                        }
+                      },
+                      "expires_at": "2026-11-03T10:12:43Z"
+                    }
+                  }
+                },
+                "repair": {
+                  "value": {
+                    "schema_version": 1,
+                    "work_id": "rec_8Hd2",
+                    "attempt_id": "att_1",
+                    "generation": "gap_03",
+                    "profile": "h264-hls-live-repair",
+                    "deadline_s": 600,
+                    "input": {
+                      "parts": [
+                        {
+                          "url": "https://media.zio.example/rec/env_prod/rec_8Hd2/2026-11-03_10-00-02.mp4?X-Signature=abc",
+                          "expires_at": "2026-11-03T10:40:00Z",
+                          "size_bytes": 7340032,
+                          "sha256": "4a7e000000000000000000000000000000000000000000000000000000000000"
+                        }
+                      ],
+                      "from_s": 1.5,
+                      "to_s": 13.5
+                    },
+                    "ladder": [
+                      {
+                        "name": "720p",
+                        "width": 1280,
+                        "height": 720,
+                        "bandwidth": 3428000,
+                        "codecs": "avc1.64001f,mp4a.40.2",
+                        "frame_rate": 30.0
+                      },
+                      {
+                        "name": "360p",
+                        "width": 640,
+                        "height": 360,
+                        "bandwidth": 1008000,
+                        "codecs": "avc1.64001e,mp4a.40.2",
+                        "frame_rate": 30.0
+                      }
+                    ],
+                    "output": {
+                      "prefix": "out/env_prod/rec_8Hd2/gap_03/",
+                      "grant": {
+                        "kind": "s3-post-policy",
+                        "url": "https://media.zio.example/",
+                        "fields": {
+                          "policy": "eyJleHBpcmF0aW9uIjoi",
+                          "x-amz-signature": "5d1f0c"
+                        }
+                      },
+                      "expires_at": "2026-11-03T10:40:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An NDJSON stream, one Line per line. The result line's outcome, not the status, says whether the attempt succeeded",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/Line"
+                },
+                "examples": {
+                  "progress": {
+                    "value": {
+                      "type": "progress",
+                      "attempt_id": "att_1",
+                      "stage": "encode",
+                      "percent": 42.5
+                    }
+                  },
+                  "succeeded": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "att_1",
+                      "outcome": "succeeded",
+                      "descriptor": {
+                        "schema_version": 1,
+                        "work_id": "ast_4Tq9",
+                        "attempt_id": "att_1",
+                        "generation": "gen_01",
+                        "profile": "h264-hls-1080",
+                        "source": {
+                          "container": "mov,mp4,m4a,3gp,3g2,mj2",
+                          "duration_s": 862.4,
+                          "video": {
+                            "codec": "h264",
+                            "width": 1920,
+                            "height": 1080,
+                            "frame_rate": 29.97,
+                            "rotation": 0
+                          },
+                          "audio": {
+                            "codec": "aac",
+                            "channels": 2,
+                            "sample_rate": 48000
+                          }
+                        },
+                        "manifest": "out/env_prod/ast_4Tq9/gen_01/index.m3u8",
+                        "renditions": [
+                          {
+                            "name": "1080p",
+                            "width": 1920,
+                            "height": 1080,
+                            "bandwidth": 5400000,
+                            "codecs": "avc1.640028,mp4a.40.2",
+                            "playlist": "1080p/index.m3u8",
+                            "segments": 144,
+                            "duration_s": 862.4
+                          }
+                        ],
+                        "objects": {
+                          "count": 1729,
+                          "bytes": 1271003136
+                        },
+                        "encoder": {
+                          "name": "h264_nvenc",
+                          "ffmpeg": "8.1.3",
+                          "gpu": "NVIDIA GeForce GTX 1650",
+                          "preset": "p5"
+                        }
+                      }
+                    }
+                  },
+                  "repaired": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "att_1",
+                      "outcome": "succeeded",
+                      "descriptor": {
+                        "schema_version": 1,
+                        "work_id": "rec_8Hd2",
+                        "attempt_id": "att_1",
+                        "generation": "gap_03",
+                        "profile": "h264-hls-live-repair",
+                        "renditions": {
+                          "720p": [
+                            {
+                              "key": "out/env_prod/rec_8Hd2/gap_03/720p/000000.ts",
+                              "duration_s": 2.0
+                            }
+                          ],
+                          "360p": [
+                            {
+                              "key": "out/env_prod/rec_8Hd2/gap_03/360p/000000.ts",
+                              "duration_s": 2.0
+                            }
+                          ]
+                        },
+                        "objects": {
+                          "count": 12,
+                          "bytes": 3145728
+                        },
+                        "encoder": {
+                          "name": "h264_nvenc",
+                          "ffmpeg": "8.1.3",
+                          "gpu": "NVIDIA GeForce GTX 1650",
+                          "preset": "p4"
+                        }
+                      }
+                    }
+                  },
+                  "failed": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "att_1",
+                      "outcome": "failed",
+                      "error": {
+                        "kind": "input_unsupported",
+                        "retryable": false,
+                        "detail": "video codec av1 is not supported"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused before any work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "invalid or missing: input.sha256"
+                    }
+                  },
+                  "schema_unsupported": {
+                    "value": {
+                      "kind": "schema_unsupported",
+                      "detail": "schema_version 2; this runner speaks 1"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "ndjson",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "last-line",
+                "pointer": "/outcome",
+                "equals": "succeeded"
+              }
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "Not JSON, or not the request schema"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "An unknown schema_version"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "input_unreadable",
+              "kind": "input_unreadable",
+              "note": "The input could not be fetched, or is not on the deployment's storage origins"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "input_corrupt",
+              "kind": "input_invalid",
+              "note": "The input's SHA-256 differs from the request"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "input_unsupported",
+              "kind": "input_unsupported",
+              "note": "Outside the profile's input limits; detail names the codec, size, duration, resolution or frame rate"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "A profile this runner does not offer"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "output_write_failed",
+              "kind": "output_failed",
+              "note": "An upload under output.prefix failed"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "encoder_unavailable",
+              "kind": "unavailable",
+              "note": "The encoder failed to start"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "deadline_exceeded",
+              "kind": "deadline_exceeded",
+              "note": "deadline_s passed"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "internal",
+              "kind": "internal",
+              "note": "Anything else, including an encoder that exited with an error"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "media_seconds",
+              "in": "last-line",
+              "pointer": "/descriptor/source/duration_s"
+            },
+            {
+              "measure": "media_seconds",
+              "in": "last-line",
+              "pointer": "/descriptor/renditions/360p/*/duration_s",
+              "aggregate": "sum"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/input/url",
+              "kind": "url",
+              "origin": "deployment",
+              "sha256_field": "/input/sha256",
+              "media_types": [
+                "video/*"
+              ]
+            },
+            {
+              "field": "/input/parts/*/url",
+              "kind": "url",
+              "origin": "deployment",
+              "sha256_field": "/input/parts/*/sha256",
+              "media_types": [
+                "video/mp4"
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/descriptor",
+              "kind": "storage-grant",
+              "grant": "s3-post-policy",
+              "completion_record": "descriptor.json",
+              "media_types": [
+                "application/vnd.apple.mpegurl",
+                "video/mp2t",
+                "application/json"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AudioInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "codec": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "integer"
+          },
+          "sample_rate": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "codec",
+          "channels",
+          "sample_rate"
+        ],
+        "type": "object"
+      },
+      "Descriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "type": "integer"
+          },
+          "work_id": {
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceInfo"
+          },
+          "manifest": {
+            "type": "string",
+            "description": "The multivariant playlist's key, under output.prefix",
+            "x-media": {
+              "by": "storage-grant",
+              "type": "application/vnd.apple.mpegurl"
+            }
+          },
+          "renditions": {
+            "items": {
+              "$ref": "#/components/schemas/Rendition"
+            },
+            "type": "array"
+          },
+          "objects": {
+            "$ref": "#/components/schemas/Objects"
+          },
+          "encoder": {
+            "$ref": "#/components/schemas/EncoderInfo"
+          }
+        },
+        "required": [
+          "work_id",
+          "attempt_id",
+          "generation",
+          "profile",
+          "source",
+          "manifest",
+          "renditions",
+          "objects",
+          "encoder",
+          "schema_version"
+        ],
+        "type": "object"
+      },
+      "EncoderInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ffmpeg": {
+            "type": "string"
+          },
+          "gpu": {
+            "type": "string"
+          },
+          "preset": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "ffmpeg"
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "input_unreadable",
+              "input_corrupt",
+              "input_unsupported",
+              "output_write_failed",
+              "encoder_unavailable",
+              "deadline_exceeded",
+              "schema_unsupported",
+              "internal"
+            ],
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "Ziply.io's own retry flag; the entry's errors map each kind to a base kind"
+          },
+          "detail": {
+            "type": "string",
+            "description": "For the operator"
+          }
+        },
+        "required": [
+          "kind",
+          "retryable",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "Grant": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "s3-post-policy",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "fields"
+        ],
+        "type": "object",
+        "description": "An S3 POST policy limited to output.prefix. The runner sends fields as given, then key and Content-Type, then the file"
+      },
+      "Input": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A GET on one of the deployment's storage origins; any other origin fails with input_unreadable",
+            "format": "uri",
+            "x-media": {
+              "by": "url",
+              "accept": [
+                "video/*"
+              ]
+            }
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the URL's signature expires"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "description": "The declared size",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "description": "Lowercase hex; checked after download, input_corrupt on a mismatch",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at",
+          "size_bytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "LadderEntry": {
+        "additionalProperties": false,
+        "description": "One of the recording's renditions, as its live runner reported it.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "bandwidth": {
+            "type": "integer"
+          },
+          "codecs": {
+            "type": "string"
+          },
+          "frame_rate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "width",
+          "height",
+          "bandwidth",
+          "codecs",
+          "frame_rate"
+        ],
+        "type": "object"
+      },
+      "Line": {
+        "description": "One line of the NDJSON answer: progress lines, then exactly one result line, always last",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Progress"
+          },
+          {
+            "$ref": "#/components/schemas/Result"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "progress": "#/components/schemas/Progress",
+            "result": "#/components/schemas/Result"
+          }
+        }
+      },
+      "Objects": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "bytes"
+        ],
+        "type": "object",
+        "description": "The objects written under output.prefix, not counting descriptor.json"
+      },
+      "Output": {
+        "additionalProperties": false,
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "description": "Every object the runner writes goes under this key prefix"
+          },
+          "grant": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the grant expires"
+          }
+        },
+        "required": [
+          "prefix",
+          "grant",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "Progress": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "progress",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "fetch",
+              "probe",
+              "encode",
+              "upload"
+            ],
+            "type": "string"
+          },
+          "percent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "stage",
+          "percent",
+          "type"
+        ],
+        "type": "object"
+      },
+      "Refusal": {
+        "description": "A 400 answered before any work",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "schema_unsupported"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Rendition": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "bandwidth": {
+            "type": "integer"
+          },
+          "codecs": {
+            "type": "string"
+          },
+          "playlist": {
+            "type": "string"
+          },
+          "segments": {
+            "type": "integer"
+          },
+          "duration_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "width",
+          "height",
+          "bandwidth",
+          "codecs",
+          "playlist",
+          "segments",
+          "duration_s"
+        ],
+        "type": "object"
+      },
+      "RepairDescriptor": {
+        "additionalProperties": false,
+        "description": "Each rendition's segments in order, every rendition the same number, and no playlists: the caller splices them into the recording's own",
+        "properties": {
+          "schema_version": {
+            "type": "integer"
+          },
+          "work_id": {
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "renditions": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/RepairSegment"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "objects": {
+            "$ref": "#/components/schemas/Objects"
+          },
+          "encoder": {
+            "$ref": "#/components/schemas/EncoderInfo"
+          }
+        },
+        "required": [
+          "work_id",
+          "attempt_id",
+          "generation",
+          "profile",
+          "renditions",
+          "objects",
+          "encoder",
+          "schema_version"
+        ],
+        "type": "object"
+      },
+      "RepairInput": {
+        "additionalProperties": false,
+        "description": "The gap's source fragments, read in order as one stream and trimmed to from_s..to_s, counted from the first part's start",
+        "properties": {
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/RepairPart"
+            },
+            "type": "array"
+          },
+          "from_s": {
+            "type": "number"
+          },
+          "to_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "parts",
+          "from_s",
+          "to_s"
+        ],
+        "type": "object"
+      },
+      "RepairPart": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A GET on one of the deployment's storage origins; any other origin fails with input_unreadable",
+            "format": "uri",
+            "x-media": {
+              "by": "url",
+              "accept": [
+                "video/mp4"
+              ]
+            }
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the URL's signature expires"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "description": "The declared size",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "description": "Lowercase hex; checked after download, input_corrupt on a mismatch",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at",
+          "size_bytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "RepairRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "description": "The wire contract's version"
+          },
+          "work_id": {
+            "type": "string",
+            "description": "Opaque; echoed in the result. Logged for correlation"
+          },
+          "attempt_id": {
+            "type": "string",
+            "description": "Opaque; echoed in every line. The caller owns attempts: a new attempt has a new attempt_id"
+          },
+          "generation": {
+            "type": "string",
+            "description": "Opaque; the output generation this attempt writes"
+          },
+          "profile": {
+            "const": "h264-hls-live-repair",
+            "description": "The encoding profile"
+          },
+          "deadline_s": {
+            "type": "number",
+            "description": "Seconds; past it the attempt ends with deadline_exceeded",
+            "exclusiveMinimum": 0
+          },
+          "input": {
+            "$ref": "#/components/schemas/RepairInput"
+          },
+          "ladder": {
+            "items": {
+              "$ref": "#/components/schemas/LadderEntry"
+            },
+            "type": "array"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          }
+        },
+        "required": [
+          "schema_version",
+          "work_id",
+          "attempt_id",
+          "generation",
+          "profile",
+          "deadline_s",
+          "input",
+          "ladder",
+          "output"
+        ],
+        "type": "object",
+        "description": "Re-encodes a live recording's gap on the h264-hls-live-repair profile"
+      },
+      "RepairSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The segment's key, under output.prefix",
+            "x-media": {
+              "by": "storage-grant",
+              "type": "video/mp2t"
+            }
+          },
+          "duration_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "duration_s"
+        ],
+        "type": "object"
+      },
+      "Result": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "result",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "descriptor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Descriptor"
+              },
+              {
+                "$ref": "#/components/schemas/RepairDescriptor"
+              }
+            ]
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "outcome",
+          "type"
+        ],
+        "type": "object"
+      },
+      "SourceInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "container": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "number",
+            "description": "Seconds of source encoded: the source's duration, or clip_s when shorter"
+          },
+          "video": {
+            "$ref": "#/components/schemas/VideoInfo"
+          },
+          "audio": {
+            "$ref": "#/components/schemas/AudioInfo"
+          }
+        },
+        "required": [
+          "container",
+          "duration_s"
+        ],
+        "type": "object"
+      },
+      "TranscodeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "description": "The wire contract's version"
+          },
+          "work_id": {
+            "type": "string",
+            "description": "Opaque; echoed in the result. Logged for correlation"
+          },
+          "attempt_id": {
+            "type": "string",
+            "description": "Opaque; echoed in every line. The caller owns attempts: a new attempt has a new attempt_id"
+          },
+          "generation": {
+            "type": "string",
+            "description": "Opaque; the output generation this attempt writes"
+          },
+          "profile": {
+            "enum": [
+              "h264-hls-1080"
+            ],
+            "description": "The encoding profile"
+          },
+          "deadline_s": {
+            "type": "number",
+            "description": "Seconds; past it the attempt ends with deadline_exceeded",
+            "exclusiveMinimum": 0
+          },
+          "input": {
+            "$ref": "#/components/schemas/Input"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "max_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The longest source the caller accepts; a longer one fails with input_unsupported"
+          },
+          "clip_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only this many seconds of the source are encoded"
+          }
+        },
+        "required": [
+          "schema_version",
+          "work_id",
+          "attempt_id",
+          "generation",
+          "profile",
+          "deadline_s",
+          "input",
+          "output"
+        ],
+        "type": "object",
+        "description": "Transcodes a stored source on the h264-hls-1080 profile"
+      },
+      "VideoInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "codec": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "frame_rate": {
+            "type": "number"
+          },
+          "rotation": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "codec",
+          "width",
+          "height",
+          "frame_rate",
+          "rotation"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "zio.vod-transcode.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "video-transcode"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "Reads sources only from its deployment's storage origins and writes only through grants that deployment's gateway mints; one job per GPU slot"
+    },
+    "attempts": "caller",
+    "readiness": "A test encode with h264_nvenc passes: 2 s of a 1080p30 test source with audio through the whole h264-hls-1080 ladder, every rendition and the audio a complete playlist",
+    "presets": {
+      "h264-hls-1080": {
+        "summary": "An H.264 HLS ladder of up to four renditions, with one shared AAC rendition",
+        "request": "#/components/schemas/TranscodeRequest",
+        "video": "H.264 High on NVENC (h264_nvenc, preset p5, tune hq), VBR capped at 1.1 times each rung's rate; closed GOPs, a keyframe every 2 s, aligned across renditions",
+        "ladder": [
+          {
+            "name": "1080p",
+            "short_side": 1080,
+            "video_bitrate": 5000000
+          },
+          {
+            "name": "720p",
+            "short_side": 720,
+            "video_bitrate": 3000000
+          },
+          {
+            "name": "480p",
+            "short_side": 480,
+            "video_bitrate": 1400000
+          },
+          {
+            "name": "360p",
+            "short_side": 360,
+            "video_bitrate": 800000
+          }
+        ],
+        "ladder_rule": "Renditions are named and limited by the source's short side, never larger than the source; a source smaller than every rung keeps its own size",
+        "frame_rate": "The source's, halved until it is 60 or less; an unknown rate becomes 30",
+        "audio": "AAC-LC stereo, 128 kb/s, 48 kHz, one EXT-X-MEDIA rendition in group audio",
+        "packaging": "HLS with 6 s MPEG-TS segments, one media playlist per rendition, and the multivariant playlist index.m3u8",
+        "limits": {
+          "max_duration_s": 14400,
+          "max_input_bytes": 4294967296,
+          "max_long_side": 3840,
+          "max_short_side": 2160,
+          "max_frame_rate": 240.0,
+          "video_codecs": [
+            "h264",
+            "hevc",
+            "mpeg2video",
+            "prores",
+            "vp9"
+          ],
+          "audio_codecs": [
+            "aac",
+            "ac3",
+            "mp2",
+            "mp3",
+            "opus",
+            "pcm_*"
+          ],
+          "requires_video": true,
+          "on_violation": "input_unsupported"
+        }
+      },
+      "h264-hls-live-repair": {
+        "summary": "A live recording's gap re-encoded from its stored fragments on the recording's own renditions",
+        "request": "#/components/schemas/RepairRequest",
+        "input": "input.parts: the gap's fMP4 fragments in order, read as one stream and trimmed to from_s..to_s from the first part's start",
+        "video": "H.264 High on NVENC (h264_nvenc, preset p4, tune ll, no B-frames) at the live runner's levels and rates; an IDR every 2 s in every rendition",
+        "audio": "AAC 128 kb/s multiplexed into each rendition",
+        "packaging": "2 s MPEG-TS segments per rendition under output.prefix and no playlists; every rendition has the same number of segments"
+      }
+    },
+    "cost_hint": {
+      "speed": {
+        "h264-hls-1080/h264_nvenc/gtx-1650": 6.18
+      },
+      "note": "Source seconds encoded per wall-clock second, one job at a time, by Ziply.io's measurement of the runner's ffmpeg command on a GeForce GTX 1650 with a 1080p30 source (2026-10-31). Fetch and upload time add to it"
+    }
+  }
+}

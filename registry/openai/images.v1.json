@@ -1,0 +1,378 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openai.images.v1",
+    "version": "1",
+    "description": "OpenAI's image generation API as Livepeer runners speak it: a text prompt in, PNG images out as base64 in the JSON answer. Drafted from BlueClawNetwork/platform at fdc91a9."
+  },
+  "paths": {
+    "/v1/images/generations": {
+      "post": {
+        "operationId": "images",
+        "summary": "Generate images from a prompt",
+        "description": "Generates n images, at most 10, one after another, and returns each as a base64 PNG in data[].b64_json; this profile returns no image URLs. num_inference_steps, guidance_scale, negative_prompt and seed are Livepeer additions, not in OpenAI's API.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImagesRequest"
+              },
+              "examples": {
+                "simple": {
+                  "summary": "One image at the runner's default size",
+                  "value": {
+                    "model": "FLUX.1-schnell",
+                    "prompt": "A red crab on a beach at sunset"
+                  }
+                },
+                "tuned": {
+                  "summary": "Two images with a size, steps and a seed",
+                  "value": {
+                    "model": "FLUX.1-schnell",
+                    "prompt": "A red crab on a beach at sunset",
+                    "n": 2,
+                    "size": "1024x768",
+                    "num_inference_steps": 4,
+                    "seed": 7,
+                    "response_format": "b64_json"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The images, as base64 PNGs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImagesResponse"
+                },
+                "examples": {
+                  "one": {
+                    "summary": "One image, its base64 shortened",
+                    "value": {
+                      "created": 1793900000,
+                      "data": [
+                        {
+                          "b64_json": "iVBORw0KGgoAAAANSUhEUgAA"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in OpenAI's error format; the errors list in x-livepeer maps each status to a base kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "full": {
+                    "summary": "Every slot is in use",
+                    "value": {
+                      "error": {
+                        "message": "runner at capacity; retry shortly",
+                        "type": "server_error"
+                      }
+                    }
+                  },
+                  "too_big": {
+                    "summary": "A size over the runner's limit",
+                    "value": {
+                      "error": {
+                        "message": "size can't exceed 1536 on a side",
+                        "type": "invalid_request_error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^(size can't exceed|this model takes at most) ",
+              "kind": "input_unsupported",
+              "note": "A size or step count over the runner's own limits (BlueClaw's MAX_IMAGE_SIDE and MAX_STEPS, where quality hd doubles the steps)"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "A malformed request, a response_format other than b64_json, or more than 10 images"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "Vendor proxy: its admission check refused the payer, or the vendor refused the operator's key. No work started"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "Vendor proxy: as 401"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "Vendor proxy: it doesn't forward this path, or the vendor hasn't got the model. A runner that has it can serve the same request"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The body is over the vendor proxy's 32 MiB body cap (nginx), a limit of this runner"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "Vendor proxy: the vendor's rate limit, passed through"
+            },
+            {
+              "status": 500,
+              "content_type": "text/html",
+              "kind": "unavailable",
+              "note": "Vendor proxy: nginx's own error page, when its admission webhook fails or doesn't answer. The vendor wasn't called. A vendor's own 500 that comes back as HTML would also match"
+            },
+            {
+              "status": 500,
+              "kind": "internal",
+              "note": "Generation failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "Vendor proxy: the vendor couldn't be reached, or answered with a 502"
+            },
+            {
+              "status": 503,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^runner at capacity",
+              "kind": "busy",
+              "note": "Every slot is in use. No work started"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "Any other 503, such as a vendor behind the proxy being overloaded. No work started"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "Vendor proxy: the vendor sent nothing for 600 s"
+            },
+            {
+              "status": 507,
+              "kind": "internal",
+              "note": "The GPU ran out of memory during generation, so work had started"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "images",
+              "in": "body",
+              "pointer": "/data/*",
+              "aggregate": "count"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/prompt",
+              "kind": "inline",
+              "max_bytes": 16000
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/data/*/b64_json",
+              "kind": "inline",
+              "media_types": [
+                "image/png"
+              ],
+              "max_bytes": 16800000
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImagesRequest": {
+        "type": "object",
+        "required": [
+          "model",
+          "prompt"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model to use, as the runner's envelope names it in model.name. A runner that serves one model may ignore it",
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "description": "What to draw, at most 4,000 characters. A model may read only the start of a long prompt",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "x-media": {
+              "by": "inline",
+              "type": "text/plain"
+            }
+          },
+          "n": {
+            "description": "How many images, generated one after another",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1
+          },
+          "size": {
+            "description": "WIDTHxHEIGHT in pixels, each 256 to 2048, such as 1024x768. Without it the runner uses its default, 1024x1024 on BlueClaw's. FLUX models round each side down to a multiple of 16",
+            "type": "string",
+            "pattern": "^(25[6-9]|2[6-9][0-9]|[3-9][0-9]{2}|1[0-9]{3}|20[0-3][0-9]|204[0-8])x(25[6-9]|2[6-9][0-9]|[3-9][0-9]{2}|1[0-9]{3}|20[0-3][0-9]|204[0-8])$"
+          },
+          "quality": {
+            "description": "hd asks for more detail, which a runner may meet with more steps; BlueClaw's takes twice as many",
+            "enum": [
+              "standard",
+              "hd"
+            ]
+          },
+          "response_format": {
+            "description": "Only b64_json: images come back inside the answer",
+            "enum": [
+              "b64_json"
+            ],
+            "default": "b64_json"
+          },
+          "num_inference_steps": {
+            "description": "Livepeer addition. Denoising steps; without it the runner uses its model's default, 4 for FLUX.1-schnell on BlueClaw's",
+            "type": "integer",
+            "minimum": 1
+          },
+          "guidance_scale": {
+            "description": "Livepeer addition. How closely to follow the prompt; without it the runner uses its model's default",
+            "type": "number",
+            "minimum": 0
+          },
+          "negative_prompt": {
+            "description": "Livepeer addition. What to keep out of the image. FLUX models ignore it",
+            "type": "string"
+          },
+          "seed": {
+            "description": "Livepeer addition. The random seed; image i of n uses seed + i",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImagesResponse": {
+        "type": "object",
+        "required": [
+          "created",
+          "data"
+        ],
+        "properties": {
+          "created": {
+            "description": "When the images were made, in Unix seconds",
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          }
+        }
+      },
+      "Image": {
+        "type": "object",
+        "required": [
+          "b64_json"
+        ],
+        "properties": {
+          "b64_json": {
+            "description": "One PNG image in base64, at most 16,800,000 bytes",
+            "type": "string",
+            "contentEncoding": "base64",
+            "contentMediaType": "image/png",
+            "maxLength": 16800000,
+            "x-media": {
+              "by": "inline",
+              "type": "image/png"
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "OpenAI's error body",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "param": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "openai.images.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "text-to-image"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

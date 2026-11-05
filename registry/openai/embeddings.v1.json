@@ -1,0 +1,384 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openai.embeddings.v1",
+    "version": "1",
+    "description": "OpenAI's embeddings API as Livepeer runners speak it: text in, one vector per input out, with the input tokens counted in usage. Drafted from BlueClawNetwork/platform at fdc91a9."
+  },
+  "paths": {
+    "/v1/embeddings": {
+      "post": {
+        "operationId": "embeddings",
+        "summary": "Turn text into vectors",
+        "description": "Returns one embedding per input string, in input order, and counts the input tokens in usage.prompt_tokens. With encoding_format float, each embedding is a list of numbers; with base64, it is the vector's float32 values, little-endian, in base64. The OpenAI SDKs ask for base64 unless told otherwise.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingsRequest"
+              },
+              "examples": {
+                "one": {
+                  "summary": "One string",
+                  "value": {
+                    "model": "bge-m3",
+                    "input": "The quick brown fox",
+                    "encoding_format": "float"
+                  }
+                },
+                "several": {
+                  "summary": "Several strings, as the OpenAI SDKs send them by default",
+                  "value": {
+                    "model": "bge-m3",
+                    "input": [
+                      "The quick brown fox",
+                      "jumps over the lazy dog"
+                    ],
+                    "encoding_format": "base64"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The embeddings, in input order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingsResponse"
+                },
+                "examples": {
+                  "float": {
+                    "summary": "One embedding as numbers, shortened",
+                    "value": {
+                      "object": "list",
+                      "data": [
+                        {
+                          "object": "embedding",
+                          "index": 0,
+                          "embedding": [
+                            -0.0353,
+                            0.0168,
+                            -0.0427
+                          ]
+                        }
+                      ],
+                      "model": "bge-m3",
+                      "usage": {
+                        "prompt_tokens": 6,
+                        "total_tokens": 6
+                      }
+                    }
+                  },
+                  "base64": {
+                    "summary": "One embedding as base64 float32s, shortened",
+                    "value": {
+                      "object": "list",
+                      "data": [
+                        {
+                          "object": "embedding",
+                          "index": 0,
+                          "embedding": "vJYQvSegiTwy5i69"
+                        }
+                      ],
+                      "model": "bge-m3",
+                      "usage": {
+                        "prompt_tokens": 6,
+                        "total_tokens": 6
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in OpenAI's error format; the errors list in x-livepeer maps each status to a base kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "missing_model": {
+                    "summary": "A model the runner hasn't got",
+                    "value": {
+                      "error": {
+                        "message": "model \"bge-m4\" not found, try pulling it first",
+                        "type": "api_error",
+                        "param": null,
+                        "code": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "A malformed request, such as an empty input or one that isn't text"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "Vendor proxy: its admission check refused the payer, or the vendor refused the operator's key. No work started"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "Vendor proxy: as 401"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "The runner hasn't got the model its envelope names (Ollama answers 404 for a model it hasn't pulled), or a vendor proxy doesn't forward this path. A runner that has it can serve the same request"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The body is over the vendor proxy's 32 MiB body cap (nginx), a limit of this runner above the profile's 8 MiB input cap"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "Vendor proxy: the vendor's rate limit, passed through"
+            },
+            {
+              "status": 500,
+              "content_type": "text/html",
+              "kind": "unavailable",
+              "note": "Vendor proxy: nginx's own error page, when its admission webhook fails or doesn't answer. The vendor wasn't called. A vendor's own 500 that comes back as HTML would also match"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "Vendor proxy: the vendor couldn't be reached, or answered with a 502"
+            },
+            {
+              "status": 503,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "server busy",
+              "kind": "busy",
+              "note": "Ollama's request queue is full. No work started"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "Any other 503, such as a vendor behind the proxy being overloaded. No work started"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "Vendor proxy: the vendor sent nothing for 600 s"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/prompt_tokens"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/input",
+              "kind": "inline",
+              "max_bytes": 8388608
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EmbeddingsRequest": {
+        "type": "object",
+        "required": [
+          "model",
+          "input"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model to use, as the runner's envelope names it in model.name",
+            "type": "string",
+            "minLength": 1
+          },
+          "input": {
+            "description": "The text to embed: one string, or up to 2,048 strings. The whole input is at most 8 MiB",
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 2048,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ],
+            "x-media": {
+              "by": "inline",
+              "type": "text/plain"
+            }
+          },
+          "encoding_format": {
+            "description": "float: each embedding is a list of numbers. base64: each is its float32 values, little-endian, in base64",
+            "enum": [
+              "float",
+              "base64"
+            ],
+            "default": "float"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbeddingsResponse": {
+        "type": "object",
+        "required": [
+          "object",
+          "data",
+          "model",
+          "usage"
+        ],
+        "properties": {
+          "object": {
+            "const": "list"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Embedding"
+            }
+          },
+          "model": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "required": [
+              "prompt_tokens",
+              "total_tokens"
+            ],
+            "properties": {
+              "prompt_tokens": {
+                "description": "The input tokens the model read",
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "Embedding": {
+        "type": "object",
+        "required": [
+          "object",
+          "index",
+          "embedding"
+        ],
+        "properties": {
+          "object": {
+            "const": "embedding"
+          },
+          "index": {
+            "description": "The position of its input string",
+            "type": "integer",
+            "minimum": 0
+          },
+          "embedding": {
+            "oneOf": [
+              {
+                "description": "encoding_format float",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              {
+                "description": "encoding_format base64",
+                "type": "string",
+                "contentEncoding": "base64"
+              }
+            ]
+          }
+        }
+      },
+      "Error": {
+        "description": "OpenAI's error body",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "param": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "openai.embeddings.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "embeddings"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

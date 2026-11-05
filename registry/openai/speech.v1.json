@@ -1,0 +1,371 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openai.speech.v1",
+    "version": "1",
+    "description": "OpenAI's text-to-speech API as Livepeer runners speak it: text in, the whole audio file out as the answer's body. Drafted from BlueClawNetwork/platform at fdc91a9."
+  },
+  "paths": {
+    "/v1/audio/speech": {
+      "post": {
+        "operationId": "speech",
+        "summary": "Speak text aloud",
+        "description": "Returns the spoken input as one audio file in the requested format, sent once it is fully encoded; it doesn't stream. pcm is mono 16-bit signed little-endian samples at 24 kHz, as OpenAI's pcm is, labelled audio/L16;rate=24000 even though that type's own byte order is big-endian.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeechRequest"
+              },
+              "examples": {
+                "mp3": {
+                  "summary": "An OpenAI voice name, as MP3",
+                  "value": {
+                    "model": "kokoro",
+                    "input": "Hello from the Livepeer network.",
+                    "voice": "alloy"
+                  }
+                },
+                "wav": {
+                  "summary": "The model's own voice, as WAV, a little faster",
+                  "value": {
+                    "model": "kokoro",
+                    "input": "Hello from the Livepeer network.",
+                    "voice": "bf_emma",
+                    "response_format": "wav",
+                    "speed": 1.2
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The audio file; its content type says which format it is",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "description": "MP3",
+                  "type": "string",
+                  "contentMediaType": "audio/mpeg",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/mpeg"
+                  }
+                }
+              },
+              "audio/opus": {
+                "schema": {
+                  "description": "Opus in an Ogg container",
+                  "type": "string",
+                  "contentMediaType": "audio/opus",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/opus"
+                  }
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "description": "AAC in ADTS frames",
+                  "type": "string",
+                  "contentMediaType": "audio/aac",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/aac"
+                  }
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "description": "FLAC",
+                  "type": "string",
+                  "contentMediaType": "audio/flac",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/flac"
+                  }
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "description": "WAV, 16-bit PCM",
+                  "type": "string",
+                  "contentMediaType": "audio/wav",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/wav"
+                  }
+                }
+              },
+              "audio/L16;rate=24000": {
+                "schema": {
+                  "description": "pcm: mono 16-bit signed little-endian samples at 24 kHz, with no header",
+                  "type": "string",
+                  "contentMediaType": "audio/L16;rate=24000",
+                  "x-media": {
+                    "by": "body",
+                    "type": "audio/L16;rate=24000"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in OpenAI's error format; the errors list in x-livepeer maps each status to a base kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "too_long": {
+                    "summary": "More input than the runner takes",
+                    "value": {
+                      "error": {
+                        "message": "input exceeds 4000 characters",
+                        "type": "invalid_request_error"
+                      }
+                    }
+                  },
+                  "full": {
+                    "summary": "Every slot is in use",
+                    "value": {
+                      "error": {
+                        "message": "runner at capacity; retry shortly",
+                        "type": "server_error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "binary",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^input exceeds [0-9]+ characters",
+              "kind": "input_unsupported",
+              "note": "Input longer than the runner's own limit (BlueClaw's MAX_INPUT_CHARS), where it is below the profile's 4,000 characters"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "A malformed request, input that is empty or only spaces, or an unsupported response_format"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "Vendor proxy: its admission check refused the payer, or the vendor refused the operator's key. No work started"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "Vendor proxy: as 401"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "Vendor proxy: it doesn't forward this path, or the vendor hasn't got the model. A runner that has it can serve the same request"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The body is over the vendor proxy's 32 MiB body cap (nginx), a limit of this runner"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "Vendor proxy: the vendor's rate limit, passed through"
+            },
+            {
+              "status": 500,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^Synthesis failed: .*No such file or directory: .*/voices/",
+              "kind": "input_unsupported",
+              "note": "A voice the runner hasn't got: BlueClaw's looks for the voice's file and answers 500 when it is missing"
+            },
+            {
+              "status": 500,
+              "content_type": "text/html",
+              "kind": "unavailable",
+              "note": "Vendor proxy: nginx's own error page, when its admission webhook fails or doesn't answer. The vendor wasn't called. A vendor's own 500 that comes back as HTML would also match"
+            },
+            {
+              "status": 500,
+              "kind": "internal",
+              "note": "Synthesis or encoding failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "Vendor proxy: the vendor couldn't be reached, or answered with a 502"
+            },
+            {
+              "status": 503,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^runner at capacity",
+              "kind": "busy",
+              "note": "Every slot is in use. No work started"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "Any other 503, such as a vendor behind the proxy being overloaded. No work started"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "Vendor proxy: the vendor sent nothing for 600 s"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "characters",
+              "in": "request",
+              "pointer": "/input",
+              "aggregate": "length"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/input",
+              "kind": "inline",
+              "max_bytes": 16000
+            }
+          ],
+          "outputs": [
+            {
+              "kind": "body",
+              "media_types": [
+                "audio/mpeg",
+                "audio/opus",
+                "audio/aac",
+                "audio/flac",
+                "audio/wav",
+                "audio/L16;rate=24000"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SpeechRequest": {
+        "type": "object",
+        "required": [
+          "model",
+          "input",
+          "voice"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model to use, as the runner's envelope names it in model.name. A runner that serves one model may ignore it",
+            "type": "string",
+            "minLength": 1
+          },
+          "input": {
+            "description": "The text to speak, at most 4,000 characters",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S",
+            "x-media": {
+              "by": "inline",
+              "type": "text/plain"
+            }
+          },
+          "voice": {
+            "description": "An OpenAI voice name (alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse), which the runner maps to one of its own voices, or the model's own voice ID, such as Kokoro's af_bella",
+            "type": "string",
+            "minLength": 1
+          },
+          "response_format": {
+            "description": "The audio format",
+            "enum": [
+              "mp3",
+              "opus",
+              "aac",
+              "flac",
+              "wav",
+              "pcm"
+            ],
+            "default": "mp3"
+          },
+          "speed": {
+            "description": "How fast to speak, where 1 is normal",
+            "type": "number",
+            "minimum": 0.25,
+            "maximum": 4,
+            "default": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "Error": {
+        "description": "OpenAI's error body",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "param": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "openai.speech.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "text-to-speech"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

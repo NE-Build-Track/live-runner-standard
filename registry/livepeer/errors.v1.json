@@ -1,0 +1,116 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "livepeer.errors.v1",
+    "version": "1",
+    "description": "The base error kinds every registry entry maps its runners' errors to, and the fixed retry rule of each. A gateway decides whether to retry from the kind alone."
+  },
+  "components": {
+    "schemas": {
+      "ErrorKind": {
+        "description": "A base error kind; x-retry is its retry rule",
+        "oneOf": [
+          {
+            "const": "input_invalid",
+            "description": "The request doesn't match the profile's schema or rules",
+            "x-retry": "never"
+          },
+          {
+            "const": "input_unsupported",
+            "description": "The request is well formed but asks for something this runner doesn't support, such as a model, format or size",
+            "x-retry": "never"
+          },
+          {
+            "const": "busy",
+            "description": "The runner is at capacity; no work started",
+            "x-retry": "elsewhere"
+          },
+          {
+            "const": "unavailable",
+            "description": "The runner can't serve now, such as a missing model, GPU or encoder; no work started",
+            "x-retry": "elsewhere"
+          },
+          {
+            "const": "deadline_exceeded",
+            "description": "The work ran past its deadline; it may have happened",
+            "x-retry": "owner"
+          },
+          {
+            "const": "output_failed",
+            "description": "The work ran but its output couldn't be produced or delivered",
+            "x-retry": "owner"
+          },
+          {
+            "const": "upstream_failed",
+            "description": "A backend or vendor the runner depends on failed during the work",
+            "x-retry": "owner"
+          },
+          {
+            "const": "internal",
+            "description": "Any other failure inside the runner, including errors the entry doesn't map",
+            "x-retry": "owner"
+          },
+          {
+            "const": "input_unreadable",
+            "description": "The runner couldn't read an input, such as a URL it can't fetch or an expired grant",
+            "x-retry": "after_fix"
+          }
+        ]
+      },
+      "RetryRule": {
+        "oneOf": [
+          {
+            "const": "never",
+            "description": "The request itself is wrong; a retry fails the same way"
+          },
+          {
+            "const": "elsewhere",
+            "description": "No work started; the same request may go to another runner at once"
+          },
+          {
+            "const": "owner",
+            "description": "Work may have happened; only whoever owns the attempt may retry"
+          },
+          {
+            "const": "after_fix",
+            "description": "The caller must fix something first, such as access to an input"
+          }
+        ]
+      },
+      "ClassifiedError": {
+        "description": "A runner error as a gateway classified it, for surfaces such as MCP tool results",
+        "type": "object",
+        "required": [
+          "kind",
+          "retry"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ErrorKind"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/RetryRule"
+          },
+          "status": {
+            "description": "The runner's HTTP status, when there was one",
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "profile": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "livepeer.errors.v1",
+    "kind": "shared"
+  }
+}

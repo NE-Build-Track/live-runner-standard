@@ -254,9 +254,13 @@ def check_schemas(repo: Repo) -> list[str]:
                 failures.append(f"{at}: x-livepeer: {error_text(error)}")
             session = op_x.get("session") if isinstance(op_x, dict) else None
             if isinstance(session, dict):
-                for control in session.get("controls", []):
-                    if control not in {o.get("operationId") for _, _, o in ops}:
+                op_ids = {o.get("operationId") for _, _, o in ops}
+                for control in [*session.get("controls", []), *([session["stop"]] if "stop" in session else [])]:
+                    if control not in op_ids:
                         failures.append(f"{at}: session control {control} is not an operation")
+                admission = x.get("admission") if isinstance(x.get("admission"), dict) else {}
+                if admission.get("default") == "candidate" and "idle_timeout_s" not in session:
+                    failures.append(f"{at}: a candidate persistent profile needs session.idle_timeout_s")
                 events = session.get("events")
                 if isinstance(events, dict) and isinstance(events.get("schema"), str):
                     try:

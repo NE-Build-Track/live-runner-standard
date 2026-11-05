@@ -1,0 +1,111 @@
+# fal importer
+
+Generates one registry entry per fal endpoint, `registry/fal/<name>.v<major>.json`, from fal's public
+queue OpenAPI. Every entry extends [`fal.queue.v1`](../../registry/fal/queue.v1.json), which describes
+how the Livepeer fal route adapter behaves for every endpoint. Each endpoint entry adds that endpoint's
+own request and output schemas. Run it by hand for now; a daily workflow will run it later.
+
+## Running it
+
+From the repository root, with [uv](https://docs.astral.sh/uv/):
+
+```sh
+RUN="uv run --python 3.12 --with-requirements .github/scripts/requirements.txt python -I"
+
+$RUN importers/fal/import_fal.py --fetch    # fetch fal's OpenAPI for every endpoint, then generate
+$RUN importers/fal/import_fal.py            # generate again from the cache, offline
+$RUN importers/fal/import_fal.py --check    # write nothing; exit 1 if any entry would be written
+
+# after any entry is written, regenerate the index
+uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
+  python .github/scripts/registry_ci.py index --write
+```
+
+`--fetch` is the only network access: one GET per endpoint to
+`https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=<endpoint ID>`, in turn, a second apart
+(`--delay`). It needs no fal key. Documents are cached in `--cache` (default
+`~/.cache/live-runner-standard/fal-openapi`). An endpoint whose fetch fails is reported and skipped,
+and isn't regenerated from an older cached copy. `--endpoint <ID>` limits a run to some endpoints.
+
+The importer is deterministic: the same endpoint list and the same fal documents give byte-identical
+entries, whatever order fal writes its keys in.
+
+## What it reads
+
+- [`endpoints.json`](endpoints.json): the endpoints to import, each with the capabilities it serves,
+  chosen by hand from [`capabilities.json`](../../capabilities.json). `base` names the entry they
+  extend. Adding an endpoint is a pull request here; its capabilities must be in the base entry's list.
+- fal's OpenAPI for each endpoint, treated as untrusted data (see "fal's text").
+- [`registry/fal/queue.v1.json`](../../registry/fal/queue.v1.json): the adapter's behavior, copied
+  into each entry.
+
+## What it writes
+
+The name is the endpoint ID with a leading `fal-ai/` dropped, lowercased, and `/`, `_` and `.` turned
+into `-`, with repeats collapsed: `ideogram/v4` is `fal.ideogram-v4.v1`, and `fal-ai/flux/schnell` is
+`fal.flux-schnell.v1`. Two endpoints that would get the same name are refused.
+
+Each entry holds:
+
+- **The request:** fal's input schema for the endpoint and every component it reaches, with one
+  example built from fal's own example and default values. Placeholders (`https://example.com/...`,
+  minimum values) fill required fields where fal gives none, and the example says so. Every example
+  validates against the entry's schema.
+- **The answer:** the adapter's result body, with fal's output schema under `output`, or the adapter's
+  error body.
+- **Behavior:** `fal.queue.v1`'s operation `x-livepeer` (framing, success rule, ordered error
+  mappings, cost hint, recovery), copied unchanged except for three keys. `inputs` and `outputs` name
+  this endpoint's own URLs: top-level input fields fal fetches (`*_url`, `*_urls`, `format: uri`), and
+  the URL of each output file object or URL field, down one level, with `*` for every item of a list
+  (`/output/images/*/url`). Media types are guessed from field and component names. Deeper URL fields
+  aren't listed; the schemas show them. For `text-to-image` and `image-edit` endpoints,
+  `work_reports` counts the image URLs returned (`images`, `aggregate: count`).
+- **`x-livepeer`:** `extends: fal.queue.v1`, its mode, admission, attempts and readiness, and the
+  capabilities from `endpoints.json`.
+- **`info.x-source`:** the endpoint ID, the OpenAPI URL, and the fal schema digest.
+
+CI requires every operation to carry its own `x-livepeer`, so each entry repeats the adapter's instead
+of inheriting it through `extends`.
+
+## The fal schema digest and versions
+
+`info.x-source.sha256` is the SHA-256 of the canonical JSON (as in SPEC.md) of
+`{"components": {"schemas": ...}, "endpoint_id": ..., "input_schema": ..., "output_schema": ...}`:
+fal's input root, its output root, and every component they reach, exactly as fal publishes them,
+before any text is cleaned. The rest of fal's document (its OpenAPI version, `info`, servers and
+queue status routes) isn't included, so relabeling the document makes no new version.
+
+The digest is not the adapter's `schema_sha256`. The adapter's bundle also holds
+`source.openapi_version`, which fal changed from `3.0.4` to `3.1.0` after the adapter's snapshot of
+1 September 2026, so no adapter digest matches a fresh fetch.
+
+For each endpoint, the importer:
+
+- writes `v1` when the endpoint has no entry;
+- leaves the latest entry alone when its digest matches (with `--rewrite`, before a release only, it
+  rewrites one whose bytes differ because the importer changed);
+- writes the next major (`v2`, `v3`…) when fal's schema changed, and never touches an existing
+  entry. The steward deprecates the old one in `registry/fal/namespace.json` if needed.
+
+Any change to fal's schema counts, including a description edit.
+
+## fal's text
+
+fal's schemas are untrusted. The importer copies what validates (types, enums, bounds, required
+fields, defaults, `$ref`s) and `x-fal-order-properties`, for form order. It drops `examples`, fal's UI
+hints and other `x-` extensions, collapses whitespace in titles and descriptions, and shortens
+descriptions to 200 characters, ending at the first sentence where it can. It leaves out any
+description that reads like an instruction to a model. It refuses an endpoint whose defaults or enum
+values do. Only schema field titles and descriptions come from fal; the entry's own descriptions are
+the importer's.
+
+## Capability choices to review
+
+Most endpoints map straight from fal's own category. These are judgement calls:
+
+| Endpoint | Chosen | Why |
+|---|---|---|
+| `fal-ai/marlin` | `media-tools` | Captions a video (text out); no video-understanding capability |
+| `fal-ai/mmaudio-v2` | `sound-effects`, `video-to-video` | Adds generated sound to a video |
+| `fal-ai/whisper` | `transcription`, `translation` | `task: translate` translates speech into English |
+| `*/reference-to-video` | `image-to-video` | Reference images, some also take reference video or audio |

@@ -1,0 +1,390 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "zio.translate.v1",
+    "version": "1",
+    "description": "Translates caption lines from one language to another, one for one, with the model and language pairs the operator configures. Drafted from Ziply.io's runners at 283c77a03ac1a27244dba9b50d3dbaba801adfbb."
+  },
+  "paths": {
+    "/v1/translate": {
+      "post": {
+        "operationId": "translate",
+        "summary": "Translate caption lines from one language to another",
+        "description": "Answers 200 at once and streams NDJSON: a progress line after each batch of 32 lines, then one result line, always last. Translates with the model and language pairs its operator configures; a pair it does not offer fails in the result line with pair_unsupported.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslateRequest"
+              },
+              "examples": {
+                "translate": {
+                  "value": {
+                    "schema_version": 1,
+                    "work_id": "trk_t4",
+                    "attempt_id": "trk_t4/1",
+                    "source_language": "en",
+                    "target_language": "es",
+                    "deadline_s": 120,
+                    "lines": [
+                      "Hello, everyone.",
+                      "Welcome to the lecture."
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An NDJSON stream, one Line per line. The result line's outcome, not the status, says whether the attempt succeeded",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/Line"
+                },
+                "examples": {
+                  "progress": {
+                    "value": {
+                      "type": "progress",
+                      "attempt_id": "trk_t4/1",
+                      "percent": 100.0
+                    }
+                  },
+                  "succeeded": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "trk_t4/1",
+                      "outcome": "succeeded",
+                      "model": {
+                        "name": "opus-mt-en-es",
+                        "revision": "76ec296588e2234f9b7dfad5254219a0f5ecb7af"
+                      },
+                      "lines": [
+                        "Hola a todos.",
+                        "Bienvenidos a la clase."
+                      ]
+                    }
+                  },
+                  "failed": {
+                    "value": {
+                      "type": "result",
+                      "attempt_id": "trk_t4/1",
+                      "outcome": "failed",
+                      "error": {
+                        "kind": "pair_unsupported",
+                        "retryable": false,
+                        "detail": "this runner offers ['en-es']"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused before any work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "invalid or missing: lines"
+                    }
+                  },
+                  "schema_unsupported": {
+                    "value": {
+                      "kind": "schema_unsupported",
+                      "detail": "schema_version 2; this runner speaks 1"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "ndjson",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "last-line",
+                "pointer": "/outcome",
+                "equals": "succeeded"
+              }
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "Not JSON, or not the request schema, such as more than 20,000 lines"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "An unknown schema_version"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "pair_unsupported",
+              "kind": "input_unsupported",
+              "note": "A language pair the runner does not offer"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "deadline_exceeded",
+              "kind": "deadline_exceeded",
+              "note": "deadline_s passed between batches"
+            },
+            {
+              "status": 200,
+              "in": "last-line",
+              "pointer": "/error/kind",
+              "equals": "internal",
+              "kind": "internal",
+              "note": "Anything else; detail names the error's type"
+            }
+          ],
+          "work_reports": [
+            {
+              "measure": "characters",
+              "in": "request",
+              "pointer": "/lines/*",
+              "aggregate": "length"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "pair_unsupported",
+              "deadline_exceeded",
+              "internal"
+            ],
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "Ziply.io's own retry flag; the entry's errors map each kind to a base kind"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "retryable",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "Line": {
+        "description": "One line of the NDJSON answer: progress lines, then exactly one result line, always last",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Progress"
+          },
+          {
+            "$ref": "#/components/schemas/Result"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "progress": "#/components/schemas/Progress",
+            "result": "#/components/schemas/Result"
+          }
+        }
+      },
+      "ModelInfo": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "Progress": {
+        "properties": {
+          "type": {
+            "const": "progress",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "percent",
+          "type"
+        ],
+        "type": "object"
+      },
+      "Refusal": {
+        "description": "A 400 answered before any work",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "schema_unsupported"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Result": {
+        "properties": {
+          "type": {
+            "const": "result",
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo",
+            "description": "The model the operator configured, as the runner reports it"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "description": "One translated line for each line sent, in order"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "outcome",
+          "type"
+        ],
+        "type": "object"
+      },
+      "TranslateRequest": {
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "description": "The wire contract's version"
+          },
+          "work_id": {
+            "type": "string",
+            "description": "Opaque; echoed in the result. Logged for correlation"
+          },
+          "attempt_id": {
+            "type": "string",
+            "description": "Opaque; echoed in every line. The caller owns attempts: a new attempt has a new attempt_id"
+          },
+          "source_language": {
+            "type": "string",
+            "description": "With target_language, a pair the runner offers, such as en and es"
+          },
+          "target_language": {
+            "type": "string",
+            "description": "With source_language, a pair the runner offers"
+          },
+          "deadline_s": {
+            "exclusiveMinimum": 0,
+            "type": "integer",
+            "description": "Seconds; checked between batches, past it the attempt ends with deadline_exceeded"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "minItems": 1,
+            "type": "array",
+            "description": "Caption lines, translated one for one"
+          }
+        },
+        "required": [
+          "schema_version",
+          "work_id",
+          "attempt_id",
+          "source_language",
+          "target_language",
+          "deadline_s",
+          "lines"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "zio.translate.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "translation"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "One job at a time, with the model and language pairs its operator configures, for its deployment's gateway"
+    },
+    "attempts": "caller",
+    "readiness": "The operator's model loads and translates one line",
+    "cost_hint": {
+      "speed": {
+        "opus-mt-en-es/cpu": 27,
+        "opus-mt-en-es/gtx-1650": 49
+      },
+      "note": "Caption lines (sentences) translated per second, on the CPU beside a live transcode and on a GeForce GTX 1650, by Ziply.io's measurement (2026-10-30). The model is the operator's choice"
+    }
+  }
+}

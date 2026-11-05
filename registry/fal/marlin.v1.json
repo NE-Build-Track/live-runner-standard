@@ -1,0 +1,453 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.marlin.v1",
+    "version": "1",
+    "description": "fal endpoint fal-ai/marlin, model fal:fal-ai/marlin, through the Livepeer fal route adapter. The request and output schemas are fal's own, from its public queue OpenAPI (x-source), with long descriptions shortened and examples and fal's UI hints left out. Behavior is fal.queue.v1's.",
+    "x-source": {
+      "endpoint_id": "fal-ai/marlin",
+      "openapi_url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/marlin",
+      "sha256": "3c0c469f34268cabbe40ae2d4f9342b2653f36ee54280eb060e92c6be62a8cf1"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run fal endpoint fal-ai/marlin",
+        "description": "The body is fal's input for fal-ai/marlin, forwarded to fal unchanged; a success answer carries fal's output under `output`. Behaves as fal.queue.v1 describes. Each URL output pointer names the URL itself, and a `*` stands for every item of a list. URL fields nested deeper aren't listed in inputs or outputs; the schemas show them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarlinInput"
+              },
+              "examples": {
+                "fal": {
+                  "summary": "Built from fal's own example and default values",
+                  "value": {
+                    "video_url": "https://v3b.fal.media/files/b/0a913346/ZbEaRKcU1dMNYkHl9g1Zz_T4QEyOJ3R3WzuQS9.mp4",
+                    "prompt": "Provide a spatial description of this clip followed by time-ranged events.\nFor each event, give the time range as <start - end> and a short description."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            },
+            {
+              "field": "/video_url",
+              "kind": "url",
+              "origin": "public",
+              "media_types": [
+                "video/*"
+              ]
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EventSegment": {
+        "properties": {
+          "end": {
+            "description": "End time in seconds.",
+            "title": "End",
+            "type": "number"
+          },
+          "start": {
+            "description": "Start time in seconds.",
+            "title": "Start",
+            "type": "number"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short description of the event (caption mode only).",
+            "title": "Text"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "EventSegment",
+        "type": "object",
+        "x-fal-order-properties": [
+          "start",
+          "end",
+          "text"
+        ]
+      },
+      "MarlinInput": {
+        "properties": {
+          "do_sample": {
+            "default": false,
+            "description": "If true, sample with temperature/top_p; if false, use greedy decoding.",
+            "title": "Do Sample",
+            "type": "boolean"
+          },
+          "max_tokens": {
+            "default": 2048,
+            "description": "Maximum number of tokens to generate for the caption.",
+            "maximum": 4096,
+            "minimum": 64,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "prompt": {
+            "description": "Caption prompt sent to the model. The example value is Marlin's canonical training prompt — overriding usually degrades output quality.",
+            "maxLength": 2000,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "temperature": {
+            "default": 1,
+            "description": "Sampling temperature. Only used when do_sample is true.",
+            "maximum": 2,
+            "minimum": 0,
+            "title": "Temperature",
+            "type": "number"
+          },
+          "top_p": {
+            "default": 1,
+            "description": "Nucleus sampling threshold. Only used when do_sample is true.",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "title": "Top P",
+            "type": "number"
+          },
+          "video_url": {
+            "description": "URL of the video to caption. Up to ~2 minutes is supported.",
+            "max_file_size": 524288000,
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url",
+          "prompt"
+        ],
+        "title": "CaptionInput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "video_url",
+          "prompt",
+          "max_tokens",
+          "do_sample",
+          "temperature",
+          "top_p"
+        ]
+      },
+      "MarlinOutput": {
+        "properties": {
+          "events": {
+            "description": "Time-ranged events parsed from the caption.",
+            "items": {
+              "$ref": "#/components/schemas/EventSegment"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "scene": {
+            "description": "Spatial description of the clip.",
+            "title": "Scene",
+            "type": "string"
+          },
+          "text": {
+            "description": "Full post-thinking caption text (Scene + Events) as returned by the model.",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene",
+          "events",
+          "text"
+        ],
+        "title": "CaptionOutput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "scene",
+          "events",
+          "text"
+        ]
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "const": "fal-ai/marlin",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/MarlinOutput"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "const": "fal-ai/marlin",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.marlin.v1",
+    "kind": "profile",
+    "extends": "fal.queue.v1",
+    "mode": "single-shot",
+    "capabilities": [
+      "media-tools"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

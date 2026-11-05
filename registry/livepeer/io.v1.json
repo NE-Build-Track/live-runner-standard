@@ -1,0 +1,167 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "livepeer.io.v1",
+    "version": "1",
+    "description": "The value shapes for the input and output kinds a profile declares: inline, url and storage-grant. The body kind is the whole request or response body, and trickle channels belong to the node's session API, so neither has a value shape here."
+  },
+  "components": {
+    "schemas": {
+      "InlineMedia": {
+        "description": "Media inside the JSON as base64, with its media type; the profile states the size cap",
+        "type": "object",
+        "required": [
+          "data",
+          "media_type"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "contentEncoding": "base64"
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "UrlInput": {
+        "description": "An HTTPS URL the runner fetches. Under origin policy deployment, only the deployment's own origins are accepted. The runner refuses internal addresses, and checks sha256 when given",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "media_type": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UrlOutput": {
+        "description": "A URL the runner returns: fetchable without paying the node, until it expires",
+        "type": "object",
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "S3PostPolicyGrant": {
+        "description": "Scoped write access to the caller's storage as an S3 POST policy, limited to one key prefix",
+        "type": "object",
+        "required": [
+          "grant",
+          "url",
+          "fields",
+          "prefix",
+          "expires_at"
+        ],
+        "properties": {
+          "grant": {
+            "const": "s3-post-policy"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "prefix": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PresignedPutGrant": {
+        "description": "Scoped access to one object in the caller's storage as a presigned PUT (or GET, for inputs)",
+        "type": "object",
+        "required": [
+          "grant",
+          "url",
+          "key",
+          "expires_at"
+        ],
+        "properties": {
+          "grant": {
+            "const": "presigned-put"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StorageGrant": {
+        "description": "A storage grant; it expires shortly after the work's deadline, and the runner writes the profile's completion record last",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/S3PostPolicyGrant"
+          },
+          {
+            "$ref": "#/components/schemas/PresignedPutGrant"
+          }
+        ]
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "livepeer.io.v1",
+    "kind": "shared"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "livepeer.health.v1",
+    "version": "1",
+    "description": "The body a runner's health check answers with. It answers 200 with status ready only after a self-test of every advertised profile passes, and 503 with starting or failed otherwise."
+  },
+  "components": {
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "starting",
+              "failed"
+            ]
+          },
+          "detail": {
+            "description": "A short reason, for operators; gateways treat it as data",
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "livepeer.health.v1",
+    "kind": "shared"
+  }
+}

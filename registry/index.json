@@ -1,4 +1,833 @@
 {
-  "entries": {},
+  "entries": {
+    "anthropic.messages.v1": {
+      "aliases": [],
+      "path": "registry/anthropic/messages.v1.json",
+      "sha256": "9f874a8f51cede2666e96bad4f361fffcd468038a0abe3587e9a158e72167993",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "fal.bernini-r-edit-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bernini-r-edit-video.v1.json",
+      "sha256": "a2f4ca89f8bc50df5ad86493120993d89a149db4f9acb2c6c6954436452938e2",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.birefnet.v1": {
+      "aliases": [],
+      "path": "registry/fal/birefnet.v1.json",
+      "sha256": "5dc629bc4b8a69ab5dc378911e475722949c50a0c9137152f888cbb69de8719a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-3-extend-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-3-extend-video.v1.json",
+      "sha256": "d2083c7fa00a3598ff10557c13b4083ffa38d14efb181d0db9899de37fe362d0",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-3-first-last-frame-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-3-first-last-frame-to-video.v1.json",
+      "sha256": "ef2e072b0a3c084138836b8cdd5c584df5182a127b240bea2ef4fde737a5ec90",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-3-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-3-image-to-video.v1.json",
+      "sha256": "ec81c596d21c95f5bf45339ec056dd50d8cc06a3165ed1b3e8f8e126dfa47be6",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-3-keyframes-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-3-keyframes-to-video.v1.json",
+      "sha256": "fb37c4170ba9b2df934e992f8cbfdb62b087506bec14da79dc71e0bacd1c41fe",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-3-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-3-text-to-video.v1.json",
+      "sha256": "5be33788009adc306ca97f47f8d7381a744cd089c67fa17f2d8cfdac719455e9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.blackforestlabs-flux-video-upscale.v1": {
+      "aliases": [],
+      "path": "registry/fal/blackforestlabs-flux-video-upscale.v1.json",
+      "sha256": "6741291d8fde069b5612f9bb2acd65c2077e268513c311b17687d00de6735c5a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-omnihuman-v1-5.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-omnihuman-v1-5.v1.json",
+      "sha256": "3a917f092a4b353a7bc5863f4cea8270d6e4e2ac5052281fc308935206dfcc6c",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-0-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-image-to-video.v1.json",
+      "sha256": "cd87bd8a504b8b1f070960ca733bedba0578790baa9e24f148498420a046fffd",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-0-reference-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-reference-to-video.v1.json",
+      "sha256": "755b8332149582ea063eff413086d78dbfc2c2962cee250a29a82c9e91c575a6",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-0-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-text-to-video.v1.json",
+      "sha256": "e1c2f4c22b06f3d1a5f46487c7032e5b6a392a22075ca54fc250720bf533c355",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-5-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-image-to-video.v1.json",
+      "sha256": "278a12b9d02e9e079354ac7195a06f7483cb23b0ce24aedfb174151dff8524b9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-5-reference-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-reference-to-video.v1.json",
+      "sha256": "50570274678111b2e38bc30bf83420e7f1ef248cae27be355707bc60bceb856b",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-5-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-text-to-video.v1.json",
+      "sha256": "71906833b37146f608441cca47df10f74d8017ad525c11149831ac965df729fa",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedream-v5-pro-edit.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedream-v5-pro-edit.v1.json",
+      "sha256": "29f7f9064dedd251cd2aa4fce0fb187ee77b735cfea85a1ec507dfd8d9b1b45a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedream-v5-pro-text-to-image.v1": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedream-v5-pro-text-to-image.v1.json",
+      "sha256": "6ce5331ce371c37969ed1cc3ba76ce2e400a06a0341c28af5de835ee7b1b0548",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-compose.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-compose.v1.json",
+      "sha256": "35be57e82693ee82b7e5b20bbe939cf9648a218147698d7bcc6b29b40d1752b5",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-extract-frame.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-extract-frame.v1.json",
+      "sha256": "e3688ca19655e3653f4106896642acc5532779a0f7ef478f7644045fba237eb3",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-images-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-images-to-video.v1.json",
+      "sha256": "5b74dda3054cb268bb9c9ff88355ad354215668aa50bfe3c463f0ca67c452e1a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-loudnorm.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-loudnorm.v1.json",
+      "sha256": "8985721671ce084b83d490d5638336959c735a23bfc38a63972f26fb9b30bcf3",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-merge-audio-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-merge-audio-video.v1.json",
+      "sha256": "5b7d2fed104f4f74bd08553027ac236651378d291ec025d4497d032eec60577a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-merge-videos.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-merge-videos.v1.json",
+      "sha256": "d680138cfdd58fee591656fbf57d7d07531fdc42d0db21b6ce658fcff93f74bb",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-metadata.v1": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-metadata.v1.json",
+      "sha256": "3c7f34edc68e1d6acaa2c2b325da5cc45280e2986b93d81415855d63dc12ffb9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.flux-2-edit.v1": {
+      "aliases": [],
+      "path": "registry/fal/flux-2-edit.v1.json",
+      "sha256": "2b103e2ea4f63d00d4896385c9c977cfd9ac19b6ed2756bfcda0fb2bc5f65320",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.flux-2-pro.v1": {
+      "aliases": [],
+      "path": "registry/fal/flux-2-pro.v1.json",
+      "sha256": "4e81d8596464c2a925ed205ee79b7fa9c8289e0e0bcf5b9e44b4d38f1a08dd5d",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.flux-pro-v1-erase.v1": {
+      "aliases": [],
+      "path": "registry/fal/flux-pro-v1-erase.v1.json",
+      "sha256": "c28ffc6b76672f80ba21c325852ba8c491cbb6b3d86f223990cc00d097d50375",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.flux-pro-v1-fill.v1": {
+      "aliases": [],
+      "path": "registry/fal/flux-pro-v1-fill.v1.json",
+      "sha256": "f81865925a2538b8068ff8a24facc5def1618f59f2f1fe1a37591270b498f43a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.flux-schnell.v1": {
+      "aliases": [],
+      "path": "registry/fal/flux-schnell.v1.json",
+      "sha256": "2c01882cd605e84c45b464f140db8fa0c80e9ebbc6b68681fcdcfdb58fe0b6fe",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.gemini-3-1-flash-tts.v1": {
+      "aliases": [],
+      "path": "registry/fal/gemini-3-1-flash-tts.v1.json",
+      "sha256": "4534eb2e1f7955c89b82e5101046b73689431919d4d615778424ee1684654d67",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ideogram-v4.v1": {
+      "aliases": [],
+      "path": "registry/fal/ideogram-v4.v1.json",
+      "sha256": "e5cd82eeaa4c9cdc73e8a1d37adbbe2c455c45ed3349417585261eccaca53346",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.kling-video-o3-standard-reference-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/kling-video-o3-standard-reference-to-video.v1.json",
+      "sha256": "1b452ba9d1f2388e9ce4037d6e52c0750764c20edc43d544ef9480765b57c5e1",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.kling-video-v3-pro-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/kling-video-v3-pro-image-to-video.v1.json",
+      "sha256": "00adf72929c6e13ee4013e905728f51c6123b9d789e5db7adb01227663a8f187",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.kling-video-v3-pro-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/kling-video-v3-pro-text-to-video.v1.json",
+      "sha256": "fad634258f8c41556af9e15e4e95ea8c52a99d9dafa3a20658b1b18222d81885",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.lightricks-ltx-2-5-audio-to-video-pro.v1": {
+      "aliases": [],
+      "path": "registry/fal/lightricks-ltx-2-5-audio-to-video-pro.v1.json",
+      "sha256": "57472723806e0ebefb457bae339a8578d6c3b7cf2fd0fc30844ebbe055d4d94c",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.lightricks-ltx-2-5-image-to-video-fast.v1": {
+      "aliases": [],
+      "path": "registry/fal/lightricks-ltx-2-5-image-to-video-fast.v1.json",
+      "sha256": "d96b9e85b45818ad397d5e35fb625eba21ed2db36b5c24a1f9524b4968a4396e",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.lightricks-ltx-2-5-image-to-video-pro.v1": {
+      "aliases": [],
+      "path": "registry/fal/lightricks-ltx-2-5-image-to-video-pro.v1.json",
+      "sha256": "fc87bd196d32e1032cc3565293dd97a501b7c676ba7e8a1565434dc9aac4b30f",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.lightricks-ltx-2-5-text-to-video-fast.v1": {
+      "aliases": [],
+      "path": "registry/fal/lightricks-ltx-2-5-text-to-video-fast.v1.json",
+      "sha256": "1daa26fa23fcf9acae94f52a194150d0829953491089fe6a1c29c1394814026d",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.lightricks-ltx-2-5-text-to-video-pro.v1": {
+      "aliases": [],
+      "path": "registry/fal/lightricks-ltx-2-5-text-to-video-pro.v1.json",
+      "sha256": "d12a49a1c27bcf2a4c1077e62e0f5ee1595cc39803a70a8ece28614ef4fd1a48",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.luma-agent-ray-v3-2-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-image-to-video.v1.json",
+      "sha256": "cb4ff13aa7357fe8b444e7065ab3bcdad96affe92b4af5ddba60e8516d5a27ab",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.luma-agent-ray-v3-2-reframe.v1": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-reframe.v1.json",
+      "sha256": "cb09b7501e7dd73dacb81f105fcc6659412b2594b79bef642c75e5b8fc1e9194",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.luma-agent-ray-v3-2-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-text-to-video.v1.json",
+      "sha256": "5b7ccda271a4e29681624046aff0100d8bdec88ce91de1ce205a5fa09f9ebfc2",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.luma-agent-ray-v3-2-video-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-video-to-video.v1.json",
+      "sha256": "f4169fe9784a10a3a7b78aff115fa9a270cba148f8b50fbcd36eaf70f9fd90d9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.marlin.v1": {
+      "aliases": [],
+      "path": "registry/fal/marlin.v1.json",
+      "sha256": "5d7718bf876017e9a55bba27d8afc1debeb69931b802bbd63c835741fe282411",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.meshy-v7-image-to-3d.v1": {
+      "aliases": [],
+      "path": "registry/fal/meshy-v7-image-to-3d.v1.json",
+      "sha256": "388f86e7b659ae182e7e831dcbc1dce0abf5d694210a18244b71899ae172d31b",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-image-to-video.v1.json",
+      "sha256": "a17248c28c1d88988efcfe40d48f4a085ec7a571fcb81e9a5590cc79e172faa8",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-reference-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-reference-to-video.v1.json",
+      "sha256": "cb3c68e6ed1f4ae7c703a63053a3e51e6f71ce4dc31157e2312b6c966cecebfb",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-text-to-video.v1.json",
+      "sha256": "7d9fd5b227d259cafb8ca086ff7642aa377769eb2f7ceb25ed3625c1d7166fe9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-music-3.v1": {
+      "aliases": [],
+      "path": "registry/fal/minimax-music-3.v1.json",
+      "sha256": "ce80411a20879860a1c40767559ce308b9cb6c0367a4c78477336b5c729c6127",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.mirelo-ai-sfx1-6-text-to-audio.v1": {
+      "aliases": [],
+      "path": "registry/fal/mirelo-ai-sfx1-6-text-to-audio.v1.json",
+      "sha256": "a42f602e934a0824064a5ee1d26773979c6100f8e54d769ff2f45a6253b634d9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.mmaudio-v2.v1": {
+      "aliases": [],
+      "path": "registry/fal/mmaudio-v2.v1.json",
+      "sha256": "fc8c3b2c3005dbd87935a70b57d53d6dc1036e1f43aa2d71f30a8046413f281a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.nvidia-nemotron-asr-multilingual-asr.v1": {
+      "aliases": [],
+      "path": "registry/fal/nvidia-nemotron-asr-multilingual-asr.v1.json",
+      "sha256": "8a230165e763d0dc4e9ab422bcdaecd34c3e936d44bdafe4870039c47b908a03",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.openai-gpt-image-2-edit.v1": {
+      "aliases": [],
+      "path": "registry/fal/openai-gpt-image-2-edit.v1.json",
+      "sha256": "a59973509925fe6bf98f9b7a35151f0eeecd40230d229cbfc7f3fdb02b4bd77f",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.openai-gpt-image-2.v1": {
+      "aliases": [],
+      "path": "registry/fal/openai-gpt-image-2.v1.json",
+      "sha256": "1b6fdb5ed5d259fc7e590c4d22dc0c3c7a76b5d462c1632cdebbad2469b63c38",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.pixelcut-video-background-removal.v1": {
+      "aliases": [],
+      "path": "registry/fal/pixelcut-video-background-removal.v1.json",
+      "sha256": "543c7f7ae961af8e6328366d7a43dc437b0cf289742f97a53019f415d405cbc6",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.queue.v1": {
+      "aliases": [],
+      "path": "registry/fal/queue.v1.json",
+      "sha256": "508954e72941a622a0d7e7ac0380109f8b9233f356ae954ddc217ea5b227c890",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.recraft-v4-pro-text-to-image.v1": {
+      "aliases": [],
+      "path": "registry/fal/recraft-v4-pro-text-to-image.v1.json",
+      "sha256": "1c887a6c71385647de12abd81c8acb97b14c6af07434bd30b3ae0e275c25bc09",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.sonilo-v1-1-video-to-music.v1": {
+      "aliases": [],
+      "path": "registry/fal/sonilo-v1-1-video-to-music.v1.json",
+      "sha256": "86eed04b70f81ec5e837a3c9efaa73882ca20a46edf90e2649ecaa5793cfef05",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.sync-lipsync-v3-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/sync-lipsync-v3-image-to-video.v1.json",
+      "sha256": "523e4017fa2e6954058aaf3293de50ac6ac828548b212d268f149e763e6a3472",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.topaz-upscale-image-precision.v1": {
+      "aliases": [],
+      "path": "registry/fal/topaz-upscale-image-precision.v1.json",
+      "sha256": "eafa4429c8d3706f0c33c2a265919e70983a098e9b442d79d6070270d2f807ea",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.tripo3d-h3-1-text-to-3d.v1": {
+      "aliases": [],
+      "path": "registry/fal/tripo3d-h3-1-text-to-3d.v1.json",
+      "sha256": "ad92e6492143e0a9b271af1c891b1fe4a76ecc722aed9a46c56b9c2c57e8fb76",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.veed-subtitles.v1": {
+      "aliases": [],
+      "path": "registry/fal/veed-subtitles.v1.json",
+      "sha256": "1b19e688359e26b2948b95655017bdc9c11129e2f5a1a5567111f4cc8fbda654",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.veo3-1-first-last-frame-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/veo3-1-first-last-frame-to-video.v1.json",
+      "sha256": "8998f323d84e2562035b37995594b3f0dbcc0a8ad1f2ea63240fee6ae9a6eddf",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.veo3-1-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/veo3-1-image-to-video.v1.json",
+      "sha256": "f6631e8876bc4708f4281d8bf898bdbf117d0ff8c8bfb787783ab0bcf13454c1",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.veo3-1.v1": {
+      "aliases": [],
+      "path": "registry/fal/veo3-1.v1.json",
+      "sha256": "4160e80f79b3b0a05760f7c63363e71d6f299ed787e043cb7f4ca54f443ad3ac",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.void-video-inpainting.v1": {
+      "aliases": [],
+      "path": "registry/fal/void-video-inpainting.v1.json",
+      "sha256": "e8f7f05e19ff0711bf7f081c9b2eac924435c7efecbc5c4c97fe95c614c8d8f3",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.whisper.v1": {
+      "aliases": [],
+      "path": "registry/fal/whisper.v1.json",
+      "sha256": "50ac936db147bb6c10568a4a20d673421e2c045a5f4665781dba7f3f1b21a1af",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.workflow-utilities-scale-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/workflow-utilities-scale-video.v1.json",
+      "sha256": "94f509c5dd6f13276040dde58b8f767a37e46a2557fe854669a99abe15be100a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.workflow-utilities-trim-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/workflow-utilities-trim-video.v1.json",
+      "sha256": "8bd76e70f5f307299ca4d583cc0b67f43b8940c07c67e8ae504bca07142de26f",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.xai-grok-imagine-image-v2-0-edit.v1": {
+      "aliases": [],
+      "path": "registry/fal/xai-grok-imagine-image-v2-0-edit.v1.json",
+      "sha256": "e4fe683a4160cfb3bc4b33ebe0b3659dae69e5542ae8e627c31fa98311ae60dd",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.xai-grok-imagine-image-v2-0-text-to-image.v1": {
+      "aliases": [],
+      "path": "registry/fal/xai-grok-imagine-image-v2-0-text-to-image.v1.json",
+      "sha256": "fedb4cee6fba88ce2241ca7b0f53e09bcdb72f5aee9fcc7d6251edb9eccf9e6a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.xai-grok-imagine-video-v1-5-image-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/xai-grok-imagine-video-v1-5-image-to-video.v1.json",
+      "sha256": "0ccdce2d5d941a327eaaa3257237b13c07d8c72ee0db4d6220b34ecb5c92e0ec",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.xai-grok-imagine-video-v1-5-reference-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/xai-grok-imagine-video-v1-5-reference-to-video.v1.json",
+      "sha256": "f55def257fc3b29c843c5fc322e84621bb469039af497c0c9d5475ddc6cb80d3",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.xai-grok-imagine-video-v1-5-text-to-video.v1": {
+      "aliases": [],
+      "path": "registry/fal/xai-grok-imagine-video-v1-5-text-to-video.v1.json",
+      "sha256": "0115a3fd8bae38c000941572bf912f6c2e51fd838cdc96802ece70adb96cfd53",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "livepeer.conformance-report.v1": {
+      "aliases": [],
+      "path": "registry/livepeer/conformance-report.v1.json",
+      "sha256": "df051efa86478c826a96ed0db9b29632276b188fbf6bf34675edf56bba635193",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "livepeer.errors.v1": {
+      "aliases": [],
+      "path": "registry/livepeer/errors.v1.json",
+      "sha256": "4e4c9b1b0801e19cc8165e060511cb1c564e2302d33a1f5aefe7783c7fa83efd",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "livepeer.health.v1": {
+      "aliases": [],
+      "path": "registry/livepeer/health.v1.json",
+      "sha256": "d6b55cb966f29965a4d1c206b319ed663de39f5c067005037fa7512054aa0b42",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "livepeer.io.v1": {
+      "aliases": [],
+      "path": "registry/livepeer/io.v1.json",
+      "sha256": "194a1aab5ded4ba40459a148b3a9fbadbfded69cc2403c29ece42258978f535e",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.chat.v1": {
+      "aliases": [],
+      "path": "registry/openai/chat.v1.json",
+      "sha256": "66270a6db8f263bb25802bf3a6ffc2260e53364133d12e0998d4856cbfecead7",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.embeddings.v1": {
+      "aliases": [],
+      "path": "registry/openai/embeddings.v1.json",
+      "sha256": "e4c481a3a2a907ce8d4256f1e4ecfdcd905d4f6bf6034590a5e2ade7baf786bd",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.images.v1": {
+      "aliases": [],
+      "path": "registry/openai/images.v1.json",
+      "sha256": "c93c841e3b7fbb61f42a1e8599be6519e9070cee4d52c3699919ebaf9212bedd",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.responses.stateless.v1": {
+      "aliases": [],
+      "path": "registry/openai/responses.stateless.v1.json",
+      "sha256": "3f503ad787397721966b040960e5ded3456dfab611bc31971ebcc6ec13dc8dfa",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.speech.v1": {
+      "aliases": [],
+      "path": "registry/openai/speech.v1.json",
+      "sha256": "2636e2bc6d9beebec9293ca317486706b6c527a946b5612d5673997646441665",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.transcriptions.v1": {
+      "aliases": [],
+      "path": "registry/openai/transcriptions.v1.json",
+      "sha256": "2256f8e776e7dd4d0f568b94c1577b95e057f1e441afa0ff3cf7e5f2b3351c00",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.translations.v1": {
+      "aliases": [],
+      "path": "registry/openai/translations.v1.json",
+      "sha256": "32d33daafef68ad7c772db15b3a2d4b2aba1097d5dc04e1f12cf878ff430ef0f",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "typesafe.systemone.v1": {
+      "aliases": [],
+      "path": "registry/typesafe/systemone.v1.json",
+      "sha256": "2828bf38e273fb8b815daba26253d8e3075dde4b979ede7008e617f4cf80509c",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "zio.live-transcode.v1": {
+      "aliases": [],
+      "path": "registry/zio/live-transcode.v1.json",
+      "sha256": "956c6f559109de3704085ab0d37793948ec92d43eb98495ee133a41626ecedfe",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/cloud-spe"
+      ]
+    },
+    "zio.live-transcribe.v1": {
+      "aliases": [],
+      "path": "registry/zio/live-transcribe.v1.json",
+      "sha256": "2d4b68b306b112f62d4e0a02e1c2a48c4ec4b964272be2522aad46469a275a83",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/cloud-spe"
+      ]
+    },
+    "zio.transcribe.v1": {
+      "aliases": [],
+      "path": "registry/zio/transcribe.v1.json",
+      "sha256": "17bfd88e170887e7843c8e750f6007b03d16035be480a5e9de5cf66837e7991d",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/cloud-spe"
+      ]
+    },
+    "zio.translate.v1": {
+      "aliases": [],
+      "path": "registry/zio/translate.v1.json",
+      "sha256": "097d48d12a0a7c1d989268ba647c1dc4794b5bbea42dfd3a16ef7effc85ea624",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/cloud-spe"
+      ]
+    },
+    "zio.vod-transcode.v1": {
+      "aliases": [],
+      "path": "registry/zio/vod-transcode.v1.json",
+      "sha256": "2e2c36eba7cd71ededa8b7c32416e8bde485b2ea5cf7c5caae8c3abf94b4e970",
+      "status": "active",
+      "steward": [
+        "@NE-Build-Track/cloud-spe"
+      ]
+    }
+  },
   "registry_index": 1
 }

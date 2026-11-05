@@ -1,0 +1,501 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.luma-agent-ray-v3-2-text-to-video.v1",
+    "version": "1",
+    "description": "fal endpoint luma/agent/ray/v3.2/text-to-video, model fal:luma/agent/ray/v3.2/text-to-video, through the Livepeer fal route adapter. The request and output schemas are fal's own, from its public queue OpenAPI (x-source), with long descriptions shortened and examples and fal's UI hints left out. Behavior is fal.queue.v1's.",
+    "x-source": {
+      "endpoint_id": "luma/agent/ray/v3.2/text-to-video",
+      "openapi_url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=luma/agent/ray/v3.2/text-to-video",
+      "sha256": "5b5d17cc75fa2cc426ede27473b9c9f1bda8bfcb7f9efffc0fc63b2f5b942950"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run fal endpoint luma/agent/ray/v3.2/text-to-video",
+        "description": "The body is fal's input for luma/agent/ray/v3.2/text-to-video, forwarded to fal unchanged; a success answer carries fal's output under `output`. Behaves as fal.queue.v1 describes. Each URL output pointer names the URL itself, and a `*` stands for every item of a list. URL fields nested deeper aren't listed in inputs or outputs; the schemas show them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRayV32TextToVideoInput"
+              },
+              "examples": {
+                "fal": {
+                  "summary": "Built from fal's own example and default values",
+                  "value": {
+                    "prompt": "A herd of wild horses galloping across a dusty desert plain under a blazing midday sun, their manes flying in the wind; wide tracking shot."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/output/exr_file/url",
+              "kind": "url",
+              "expires": {
+                "after_s": 604800
+              }
+            },
+            {
+              "field": "/output/video/url",
+              "kind": "url",
+              "media_types": [
+                "video/*"
+              ],
+              "expires": {
+                "after_s": 604800
+              }
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentRayV32TextToVideoInput": {
+        "properties": {
+          "aspect_ratio": {
+            "default": "16:9",
+            "description": "Aspect ratio of the generated video.",
+            "enum": [
+              "3:4",
+              "4:3",
+              "1:1",
+              "9:16",
+              "16:9",
+              "21:9"
+            ],
+            "title": "Aspect Ratio",
+            "type": "string"
+          },
+          "duration": {
+            "default": "5s",
+            "description": "Duration of the generated video.",
+            "enum": [
+              "5s",
+              "10s"
+            ],
+            "title": "Duration",
+            "type": "string"
+          },
+          "enable_safety_checker": {
+            "default": true,
+            "description": "Authorized callers may set false to request relaxed screening.",
+            "title": "Enable Safety Checker",
+            "type": "boolean"
+          },
+          "exr_export": {
+            "default": false,
+            "description": "Also export an EXR file alongside the MP4. Requires hdr=true and HDR access.",
+            "title": "Exr Export",
+            "type": "boolean"
+          },
+          "hdr": {
+            "default": false,
+            "description": "Generate an HDR-encoded MP4. Requires HDR access on the account and a resolution of 720p or 1080p; not supported with 10s or loop.",
+            "title": "Hdr",
+            "type": "boolean"
+          },
+          "loop": {
+            "default": false,
+            "description": "Generate a seamless loop. Only valid for 5s, standard-dynamic-range generations without an end frame.",
+            "title": "Loop",
+            "type": "boolean"
+          },
+          "prompt": {
+            "description": "Text prompt describing the video to generate.",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "540p",
+            "description": "Resolution of the generated video. Higher resolutions cost more.",
+            "enum": [
+              "540p",
+              "720p",
+              "1080p"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "RayTextToVideoRequest",
+        "type": "object",
+        "x-fal-order-properties": [
+          "prompt",
+          "aspect_ratio",
+          "resolution",
+          "duration",
+          "loop",
+          "hdr",
+          "exr_export",
+          "enable_safety_checker"
+        ]
+      },
+      "AgentRayV32TextToVideoOutput": {
+        "properties": {
+          "exr_file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/File"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The generated EXR sidecar when exr_export is true. This may be a single EXR file or a ZIP package depending on Luma's export shape."
+          },
+          "video": {
+            "$ref": "#/components/schemas/File",
+            "description": "The generated video."
+          }
+        },
+        "required": [
+          "video"
+        ],
+        "title": "VideoOutput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "video",
+          "exr_file"
+        ]
+      },
+      "File": {
+        "properties": {
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The mime type of the file.",
+            "title": "Content Type"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name of the file. It will be auto-generated if not provided.",
+            "title": "File Name"
+          },
+          "file_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The size of the file in bytes.",
+            "title": "File Size"
+          },
+          "url": {
+            "description": "The URL where the file can be downloaded from.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "File",
+        "type": "object",
+        "x-fal-order-properties": [
+          "url",
+          "content_type",
+          "file_name",
+          "file_size"
+        ]
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "const": "luma/agent/ray/v3.2/text-to-video",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/AgentRayV32TextToVideoOutput"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "const": "luma/agent/ray/v3.2/text-to-video",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.luma-agent-ray-v3-2-text-to-video.v1",
+    "kind": "profile",
+    "extends": "fal.queue.v1",
+    "mode": "single-shot",
+    "capabilities": [
+      "text-to-video"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

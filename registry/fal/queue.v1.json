@@ -1,0 +1,413 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.queue.v1",
+    "version": "1",
+    "description": "The Livepeer fal route adapter: one runner per fal endpoint, which forwards the caller's JSON to fal's queue with the operator's fal key, waits for the result and returns fal's output. This entry describes the adapter's behavior for every fal endpoint. Each endpoint has its own entry, fal.<name>.v<major>, generated from fal's public OpenAPI by importers/fal/, which extends this one and narrows the request and output schemas. Derived from the adapter's source (x-source); the build running on the network may differ.",
+    "x-source": {
+      "repository": "https://github.com/eliteprox/runner-app-examples",
+      "commit": "27fb81d86ef45cf0aff77886ec0bdc13a57b23de",
+      "path": "api-proxy/runner.py"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run the pinned fal endpoint and wait for its result",
+        "description": "Each runner pins one fal endpoint. The body is that endpoint's own JSON input; the adapter forwards it to fal's queue unchanged, with the operator's fal key, and validates, rewrites and retries nothing. It then polls fal once a second until the request completes, and answers with fal's output under `output`.\n\nThe answer's headers go out as soon as fal accepts the request, carrying fal's request ID in `Livepeer-Provider-Request-Id`; the body comes when the request ends. So an error after that point arrives in a 200 answer, as the error body with `error.stage` `status`, `result` or `timeout`. An error before it has its own status and `error.stage` `submit`.\n\nThe deadline is the operator's: 180 s by default, and 180 s on every runner surveyed on 5 November 2026. It covers submit, polling and the result. When it passes, the answer says `error.stage` `timeout` and `error.status` 504: fal may still finish the request and charge the operator, and the adapter neither cancels nor resubmits it. No field a gateway reads states the deadline.\n\nThe caller owns attempts: every call is charged before the adapter runs, and a call that failed after fal accepted it may still complete there, so only the caller decides to pay again.\n\nFile fields in `output`, which each endpoint entry names, are fal-hosted URLs, fetchable without paying the node, or data URIs where the endpoint offers `sync_mode` and the caller sets it. fal may stop serving its URLs after about seven days (fal's FAQ, as cited by livepeer/console; not checked here); the adapter keeps no copy.\n\nSuccess is a 200 whose body has `output` and matches no error mapping. The adapter sends no bytes while it polls, so a long request is silent until it ends. The adapter also serves GET /schema (its schema bundle) and GET /health; neither is part of this profile.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FalInput"
+              },
+              "examples": {
+                "flux_schnell": {
+                  "summary": "fal-ai/flux/schnell, from the adapter's own example",
+                  "value": {
+                    "prompt": "A lighthouse in a winter storm, editorial photograph",
+                    "image_size": "landscape_4_3",
+                    "num_inference_steps": 4,
+                    "num_images": 1,
+                    "output_format": "jpeg",
+                    "seed": 12345
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                },
+                "examples": {
+                  "result": {
+                    "summary": "A fal-ai/flux/schnell result, values from the adapter's receipt example",
+                    "value": {
+                      "billable_units": 1,
+                      "billable_units_source": "x-fal-billable-units",
+                      "endpoint_id": "fal-ai/flux/schnell",
+                      "output": {
+                        "has_nsfw_concepts": [
+                          false
+                        ],
+                        "images": [
+                          {
+                            "content_type": "image/jpeg",
+                            "height": 768,
+                            "url": "https://v3b.fal.media/files/b/0aa8de3b/7xrLIr1n2uxUnYtWtPb4a.jpg",
+                            "width": 1024
+                          }
+                        ],
+                        "prompt": "A lighthouse in a winter storm, editorial photograph",
+                        "seed": 12345,
+                        "timings": {
+                          "inference": 0.9649342300835997
+                        }
+                      },
+                      "request_id": "01a06468-fa29-7d01-873b-ada47e6089b9",
+                      "schema_sha256": "6a5103a47bb61b39ffadcc8f6ea6f98d1027cc8ba14d1723883dd6c4a6a06658"
+                    }
+                  },
+                  "deadline": {
+                    "summary": "The adapter's deadline passed while fal was still working (illustrative request ID)",
+                    "value": {
+                      "endpoint_id": "bytedance/seedance-2.0/text-to-video",
+                      "error": {
+                        "message": "adapter deadline exceeded; fal may still complete the request",
+                        "stage": "timeout",
+                        "status": 504
+                      },
+                      "request_id": "019a5c1e-7b2d-7c10-9a3e-5f1d2c3b4a59",
+                      "schema_sha256": "1d4b35446f5597c020816e6f1924c19cebbd8a6773aea3e5595c98894d01c84d"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                },
+                "examples": {
+                  "input_refused": {
+                    "summary": "fal refused the input at submit (illustrative fal detail)",
+                    "value": {
+                      "endpoint_id": "fal-ai/flux/schnell",
+                      "error": {
+                        "message": "fal submit returned HTTP 422",
+                        "stage": "submit",
+                        "status": 422,
+                        "upstream_body": {
+                          "detail": [
+                            {
+                              "loc": [
+                                "body",
+                                "prompt"
+                              ],
+                              "msg": "Field required",
+                              "type": "missing"
+                            }
+                          ]
+                        }
+                      },
+                      "schema_sha256": "6a5103a47bb61b39ffadcc8f6ea6f98d1027cc8ba14d1723883dd6c4a6a06658"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/output",
+              "kind": "url",
+              "expires": {
+                "after_s": 604800
+              }
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FalInput": {
+        "description": "The pinned fal endpoint's own input, as fal's OpenAPI defines it; each endpoint entry narrows it",
+        "type": "object"
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "description": "The pinned fal endpoint",
+            "type": "string"
+          },
+          "output": {
+            "description": "fal's result for the endpoint, unchanged; each endpoint entry gives its schema",
+            "type": "object"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "description": "The pinned fal endpoint",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.queue.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "translation",
+      "text-to-image",
+      "image-edit",
+      "image-to-3d",
+      "text-to-3d",
+      "text-to-video",
+      "image-to-video",
+      "audio-to-video",
+      "video-to-video",
+      "text-to-speech",
+      "transcription",
+      "music",
+      "sound-effects",
+      "media-tools"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

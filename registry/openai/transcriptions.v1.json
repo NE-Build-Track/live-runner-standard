@@ -1,0 +1,533 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openai.transcriptions.v1",
+    "version": "1",
+    "description": "OpenAI's transcription API as Livepeer runners speak it: an audio file in as a multipart upload, its text out, with the audio's length in usage. Drafted from BlueClawNetwork/platform at fdc91a9."
+  },
+  "paths": {
+    "/v1/audio/transcriptions": {
+      "post": {
+        "operationId": "transcriptions",
+        "summary": "Turn speech into text",
+        "description": "Transcribes the uploaded audio in its own language. text, srt and vtt answers are plain text bodies, framed as binary because there is no text framing; they carry no usage, so only json and verbose_json answers report audio seconds. In verbose_json, language is the one the request gave, or empty: the runner doesn't report the language it detected.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptionRequest"
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "audio/flac, audio/mpeg, audio/mp4, audio/ogg, audio/wav, audio/webm, video/mp4, video/webm"
+                }
+              },
+              "examples": {
+                "simple": {
+                  "summary": "A WAV file, answered as json",
+                  "value": {
+                    "file": "<the audio file's bytes>",
+                    "model": "whisper-large-v3"
+                  }
+                },
+                "verbose": {
+                  "summary": "With a language and segments",
+                  "value": {
+                    "file": "<the audio file's bytes>",
+                    "model": "whisper-large-v3",
+                    "language": "en",
+                    "response_format": "verbose_json"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The text, in the requested response_format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcription"
+                },
+                "examples": {
+                  "json": {
+                    "summary": "response_format json",
+                    "value": {
+                      "text": "hello there",
+                      "usage": {
+                        "type": "duration",
+                        "seconds": 3
+                      }
+                    }
+                  },
+                  "verbose_json": {
+                    "summary": "response_format verbose_json",
+                    "value": {
+                      "task": "transcribe",
+                      "language": "en",
+                      "duration": 2.5,
+                      "usage": {
+                        "type": "duration",
+                        "seconds": 3
+                      },
+                      "text": "hello there",
+                      "segments": [
+                        {
+                          "id": 0,
+                          "start": 0.0,
+                          "end": 1.5,
+                          "text": "hello"
+                        },
+                        {
+                          "id": 1,
+                          "start": 1.5,
+                          "end": 2.5,
+                          "text": "there"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "description": "response_format text",
+                  "type": "string"
+                },
+                "examples": {
+                  "text": {
+                    "value": "hello there"
+                  }
+                }
+              },
+              "application/x-subrip": {
+                "schema": {
+                  "description": "response_format srt",
+                  "type": "string"
+                },
+                "examples": {
+                  "srt": {
+                    "value": "1\n00:00:00,000 --> 00:00:01,500\nhello\n\n2\n00:00:01,500 --> 00:00:02,500\nthere\n"
+                  }
+                }
+              },
+              "text/vtt": {
+                "schema": {
+                  "description": "response_format vtt",
+                  "type": "string"
+                },
+                "examples": {
+                  "vtt": {
+                    "value": "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nhello\n\n00:00:01.500 --> 00:00:02.500\nthere\n"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A missing file or model, or a field of the wrong type, in the web framework's format rather than OpenAI's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                },
+                "examples": {
+                  "no_model": {
+                    "value": {
+                      "detail": [
+                        {
+                          "type": "missing",
+                          "loc": [
+                            "body",
+                            "model"
+                          ],
+                          "msg": "Field required",
+                          "input": null
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in OpenAI's error format; the errors list in x-livepeer maps each status to a base kind",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "too_big": {
+                    "summary": "A file over the runner's cap",
+                    "value": {
+                      "error": {
+                        "message": "Audio file exceeds 50 MB limit",
+                        "type": "invalid_request_error"
+                      }
+                    }
+                  },
+                  "full": {
+                    "summary": "Every slot is in use",
+                    "value": {
+                      "error": {
+                        "message": "runner at capacity; retry shortly",
+                        "type": "server_error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": [
+            "json",
+            "binary"
+          ],
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^Could not decode audio",
+              "kind": "input_unsupported",
+              "note": "Audio the runner can't decode"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "An unsupported response_format or an empty file"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "Vendor proxy: its admission check refused the payer, or the vendor refused the operator's key. No work started"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "Vendor proxy: as 401"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "Vendor proxy: it doesn't forward this path, or the vendor hasn't got the model. A runner that has it can serve the same request"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The file is over this runner's own cap (BlueClaw's MAX_AUDIO_MB, 50 MiB by default) or the vendor proxy's 32 MiB body cap (nginx). Such a request may still be valid for the profile, whose cap is 50 MiB"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid",
+              "note": "A missing file or model, or a field of the wrong type. The body is the web framework's {\"detail\": [...]}, not OpenAI's error"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "Vendor proxy: the vendor's rate limit, passed through"
+            },
+            {
+              "status": 500,
+              "content_type": "text/html",
+              "kind": "unavailable",
+              "note": "Vendor proxy: nginx's own error page, when its admission webhook fails or doesn't answer. The vendor wasn't called. A vendor's own 500 that comes back as HTML would also match"
+            },
+            {
+              "status": 500,
+              "kind": "internal",
+              "note": "Inference failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "Vendor proxy: the vendor couldn't be reached, or answered with a 502"
+            },
+            {
+              "status": 503,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "^runner at capacity",
+              "kind": "busy",
+              "note": "Every slot is in use. No work started"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "Any other 503, such as a vendor behind the proxy being overloaded. No work started"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "Vendor proxy: the vendor sent nothing for 600 s"
+            },
+            {
+              "status": 507,
+              "kind": "internal",
+              "note": "The GPU ran out of memory during inference, so work had started"
+            }
+          ],
+          "work_reports": [
+            {
+              "framing": "json",
+              "measure": "audio_seconds",
+              "in": "body",
+              "pointer": "/usage/seconds"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/file",
+              "kind": "body",
+              "media_types": [
+                "audio/flac",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/wav",
+                "audio/webm",
+                "video/mp4",
+                "video/webm"
+              ],
+              "max_bytes": 52428800
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TranscriptionRequest": {
+        "type": "object",
+        "required": [
+          "file",
+          "model"
+        ],
+        "properties": {
+          "file": {
+            "description": "The audio file, at most 50 MiB: FLAC, MP3, MP4 or M4A, Ogg, WAV or WebM. The runner reads its bytes and ignores the part's content type",
+            "type": "string",
+            "x-media": {
+              "by": "body",
+              "accept": [
+                "audio/flac",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/wav",
+                "audio/webm",
+                "video/mp4",
+                "video/webm"
+              ]
+            }
+          },
+          "model": {
+            "description": "The model to use, as the runner's envelope names it in model.name. A runner that serves one model may ignore it",
+            "type": "string",
+            "minLength": 1
+          },
+          "language": {
+            "description": "The audio's language as an ISO-639-1 code, such as en. Without it the model detects the language",
+            "type": "string",
+            "pattern": "^[a-z]{2}$"
+          },
+          "prompt": {
+            "description": "Text that guides the style or spelling of the transcript, such as names it contains",
+            "type": "string"
+          },
+          "response_format": {
+            "description": "json: the text and usage. verbose_json: also the task, language, duration and timed segments. text, srt, vtt: the text alone, as plain text, SubRip or WebVTT",
+            "enum": [
+              "json",
+              "text",
+              "srt",
+              "vtt",
+              "verbose_json"
+            ],
+            "default": "json"
+          },
+          "temperature": {
+            "description": "Sampling temperature; 0 decodes greedily",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "Transcription": {
+        "description": "The json and verbose_json answers. Only verbose_json has task, language, duration and segments",
+        "type": "object",
+        "required": [
+          "text",
+          "usage"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/DurationUsage"
+          },
+          "task": {
+            "const": "transcribe"
+          },
+          "language": {
+            "description": "The language the request gave, or empty",
+            "type": "string"
+          },
+          "duration": {
+            "description": "The audio's length in seconds",
+            "type": "number",
+            "minimum": 0
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          }
+        }
+      },
+      "DurationUsage": {
+        "type": "object",
+        "required": [
+          "type",
+          "seconds"
+        ],
+        "properties": {
+          "type": {
+            "const": "duration"
+          },
+          "seconds": {
+            "description": "The audio's length, rounded up to a whole second",
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Segment": {
+        "type": "object",
+        "required": [
+          "id",
+          "start",
+          "end",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start": {
+            "description": "Seconds from the start of the audio",
+            "type": "number",
+            "minimum": 0
+          },
+          "end": {
+            "description": "Seconds from the start of the audio",
+            "type": "number",
+            "minimum": 0
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "The web framework's validation error (FastAPI's), not OpenAI's",
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "loc": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "integer"
+                    ]
+                  }
+                },
+                "msg": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "OpenAI's error body",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "param": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "openai.transcriptions.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "transcription"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

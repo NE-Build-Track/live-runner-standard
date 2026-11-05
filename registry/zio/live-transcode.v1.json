@@ -1,0 +1,865 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "zio.live-transcode.v1",
+    "version": "1",
+    "description": "Encodes a live video source, read from a Trickle channel, into a keyframe-aligned H.264 ladder in one session, writing each rendition to its own Trickle channel. Drafted from Ziply.io's runners at 283c77a03ac1a27244dba9b50d3dbaba801adfbb."
+  },
+  "paths": {
+    "/v1/live/start": {
+      "post": {
+        "operationId": "session",
+        "summary": "Start a live transcoding session",
+        "description": "Answers 201 with the URLs of the session's Trickle channels: source in, one renditions channel per rung and events out. The first source segment sets the ladder. An error event ends the session and the runner releases it; its kind input_unsupported maps to base kind input_unsupported, encoder_unavailable to unavailable, and encoder_failed to internal. The runner serves one session at a time.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRequest"
+              },
+              "examples": {
+                "start": {
+                  "value": {
+                    "schema_version": 1,
+                    "broadcast_id": "bc_7Rk2",
+                    "epoch": 1,
+                    "profile": "h264-hls-1080-live"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The session runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                },
+                "examples": {
+                  "started": {
+                    "value": {
+                      "channels": {
+                        "source": "https://orch.example/ai/trickle/channel_3fA9-source",
+                        "renditions": {
+                          "1080p": "https://orch.example/ai/trickle/channel_3fA9-renditions-1080p",
+                          "720p": "https://orch.example/ai/trickle/channel_3fA9-renditions-720p",
+                          "480p": "https://orch.example/ai/trickle/channel_3fA9-renditions-480p",
+                          "360p": "https://orch.example/ai/trickle/channel_3fA9-renditions-360p"
+                        },
+                        "events": "https://orch.example/ai/trickle/channel_3fA9-events"
+                      },
+                      "encoder": {
+                        "name": "h264_nvenc",
+                        "gpu": "NVIDIA GeForce GTX 1650"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused before any work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "invalid or missing: epoch"
+                    }
+                  },
+                  "schema_unsupported": {
+                    "value": {
+                      "kind": "schema_unsupported",
+                      "detail": "schema_version 2; this runner speaks 1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A session is already running on this runner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "busy": {
+                    "value": {
+                      "kind": "busy",
+                      "detail": "session bc_7Rk2-1 is running"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The orchestrator refused the session's channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRefusal"
+                },
+                "examples": {
+                  "channels_refused": {
+                    "value": {
+                      "kind": "channels_refused",
+                      "detail": "the orchestrator refused the session's channels"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              201
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "Not JSON, or not the request schema"
+            },
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "schema_unsupported",
+              "kind": "input_unsupported",
+              "note": "An unknown schema_version"
+            },
+            {
+              "status": 409,
+              "kind": "busy",
+              "note": "A session is already running"
+            },
+            {
+              "status": 502,
+              "kind": "unavailable",
+              "note": "channels_refused: the orchestrator refused the session's channels; no work started"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "trickle",
+              "channel": "source",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            }
+          ],
+          "outputs": [
+            {
+              "kind": "trickle",
+              "channel": "renditions-1080p",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            },
+            {
+              "kind": "trickle",
+              "channel": "renditions-720p",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            },
+            {
+              "kind": "trickle",
+              "channel": "renditions-480p",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            },
+            {
+              "kind": "trickle",
+              "channel": "renditions-360p",
+              "media_types": [
+                "video/mp2t"
+              ],
+              "max_segment_bytes": 10000000
+            },
+            {
+              "kind": "trickle",
+              "channel": "events",
+              "media_types": [
+                "application/json"
+              ],
+              "max_segment_bytes": 10000000
+            }
+          ],
+          "session": {
+            "channels": {
+              "source": {
+                "direction": "in",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "MPEG-TS from the caller, about 2 s a segment, read as one continuous stream by one encoder for the session"
+              },
+              "renditions-1080p": {
+                "direction": "out",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "2 s segments, H.264 with AAC multiplexed in; keyframes forced at the same times in every rendition, so segment n of each covers the same span. Rungs taller than the source get no segments"
+              },
+              "renditions-720p": {
+                "direction": "out",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "2 s segments, H.264 with AAC multiplexed in; keyframes forced at the same times in every rendition, so segment n of each covers the same span. Rungs taller than the source get no segments"
+              },
+              "renditions-480p": {
+                "direction": "out",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "2 s segments, H.264 with AAC multiplexed in; keyframes forced at the same times in every rendition, so segment n of each covers the same span. Rungs taller than the source get no segments"
+              },
+              "renditions-360p": {
+                "direction": "out",
+                "media_type": "video/mp2t",
+                "max_segment_bytes": 10000000,
+                "timing": "2 s segments, H.264 with AAC multiplexed in; keyframes forced at the same times in every rendition, so segment n of each covers the same span. Rungs taller than the source get no segments"
+              },
+              "events": {
+                "direction": "out",
+                "media_type": "application/json",
+                "max_segment_bytes": 10000000,
+                "timing": "One event per segment; a segment event follows its rendition segment"
+              }
+            },
+            "stop": "stop",
+            "events": {
+              "channel": "events",
+              "schema": "#/components/schemas/Event",
+              "counter": "/epoch"
+            },
+            "drain_timeout_s": 10
+          }
+        }
+      }
+    },
+    "/v1/live/stop": {
+      "post": {
+        "operationId": "stop",
+        "summary": "Stop the live transcoding session",
+        "description": "Stops the session that the orchestrator's Livepeer-Session-Id header names, and answers once it has ended. With drain true, the default, the runner finishes once the source ends, sends the remaining segments and a drained event, and ends a source still open 10 s after the stop. With drain false it stops the encoder at once, with no drained event.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopRequest"
+              },
+              "examples": {
+                "drain": {
+                  "value": {
+                    "drain": true
+                  }
+                },
+                "now": {
+                  "value": {
+                    "drain": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The session has ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopResponse"
+                },
+                "examples": {
+                  "stopped": {
+                    "value": {
+                      "stopped": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not a stop request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopRefusal"
+                },
+                "examples": {
+                  "request_invalid": {
+                    "value": {
+                      "kind": "request_invalid",
+                      "detail": "the body takes only drain"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "This runner has no such session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopRefusal"
+                },
+                "examples": {
+                  "session_unknown": {
+                    "value": {
+                      "kind": "session_unknown",
+                      "detail": "this runner has no such session"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "in": "body",
+              "pointer": "/kind",
+              "equals": "request_invalid",
+              "kind": "input_invalid",
+              "note": "The body takes only drain"
+            },
+            {
+              "status": 404,
+              "kind": "input_invalid",
+              "note": "session_unknown: the session had already ended"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DrainedEvent": {
+        "description": "The last segments are out and the session has ended",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "segments"
+        ],
+        "properties": {
+          "type": {
+            "const": "drained"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "segments": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Rendition segments published in the session"
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "drained",
+            "epoch": 1,
+            "segments": 1204
+          }
+        ]
+      },
+      "ErrorEvent": {
+        "description": "The session failed and the runner released it",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "const": "error"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "enum": [
+              "input_unsupported",
+              "encoder_unavailable",
+              "encoder_failed"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "error",
+            "epoch": 1,
+            "kind": "input_unsupported",
+            "detail": "no video stream in the source"
+          }
+        ]
+      },
+      "Event": {
+        "description": "One event on the events channel, one JSON object per Trickle segment",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LadderEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SegmentEvent"
+          },
+          {
+            "$ref": "#/components/schemas/WarningEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/DrainedEvent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "ladder": "#/components/schemas/LadderEvent",
+            "segment": "#/components/schemas/SegmentEvent",
+            "warning": "#/components/schemas/WarningEvent",
+            "error": "#/components/schemas/ErrorEvent",
+            "drained": "#/components/schemas/DrainedEvent"
+          }
+        }
+      },
+      "LadderEvent": {
+        "description": "Once the first source segment is probed: the renditions the session will produce",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "renditions"
+        ],
+        "properties": {
+          "type": {
+            "const": "ladder"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "renditions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "width",
+                "height",
+                "bandwidth",
+                "codecs",
+                "frame_rate"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                },
+                "bandwidth": {
+                  "type": "integer",
+                  "description": "Bits per second for a master playlist: 1.1 times the video rate, plus the audio's"
+                },
+                "codecs": {
+                  "type": "string"
+                },
+                "frame_rate": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "ladder",
+            "epoch": 1,
+            "renditions": [
+              {
+                "name": "1080p",
+                "width": 1920,
+                "height": 1080,
+                "bandwidth": 5628000,
+                "codecs": "avc1.640028,mp4a.40.2",
+                "frame_rate": 30.0
+              },
+              {
+                "name": "720p",
+                "width": 1280,
+                "height": 720,
+                "bandwidth": 3428000,
+                "codecs": "avc1.64001f,mp4a.40.2",
+                "frame_rate": 30.0
+              }
+            ]
+          }
+        ]
+      },
+      "SegmentEvent": {
+        "description": "A rendition segment, sent once the segment is on its channel",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "rendition",
+          "sequence",
+          "start_s",
+          "duration_s",
+          "bytes"
+        ],
+        "properties": {
+          "type": {
+            "const": "segment"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rendition": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start_s": {
+            "type": "number"
+          },
+          "duration_s": {
+            "type": "number"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "segment",
+            "epoch": 1,
+            "rendition": "720p",
+            "sequence": 41,
+            "start_s": 82.0,
+            "duration_s": 2.0,
+            "bytes": 812040
+          }
+        ]
+      },
+      "StartRefusal": {
+        "description": "A refused start; no session runs",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "schema_unsupported",
+              "busy",
+              "channels_refused"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "type": "integer",
+            "description": "The wire contract's version"
+          },
+          "broadcast_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "type": "string",
+            "description": "Opaque; the broadcast this session encodes"
+          },
+          "epoch": {
+            "minimum": 1,
+            "type": "integer",
+            "description": "The session's epoch, from 1; every event carries it"
+          },
+          "profile": {
+            "const": "h264-hls-1080-live",
+            "type": "string",
+            "description": "The encoding profile"
+          }
+        },
+        "required": [
+          "schema_version",
+          "broadcast_id",
+          "epoch",
+          "profile"
+        ],
+        "type": "object"
+      },
+      "StartResponse": {
+        "description": "The session's Trickle channels, and the encoder and GPU it runs on",
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "object",
+            "required": [
+              "source",
+              "renditions",
+              "events"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "format": "uri",
+                "x-media": {
+                  "by": "trickle",
+                  "type": "video/mp2t"
+                },
+                "description": "The channel the caller publishes the live source to"
+              },
+              "renditions": {
+                "description": "One channel per rung of the profile, by rung name",
+                "type": "object",
+                "propertyNames": {
+                  "enum": [
+                    "1080p",
+                    "720p",
+                    "480p",
+                    "360p"
+                  ]
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-media": {
+                    "by": "trickle",
+                    "type": "video/mp2t"
+                  }
+                }
+              },
+              "events": {
+                "type": "string",
+                "format": "uri",
+                "description": "The channel of the session's events"
+              }
+            },
+            "additionalProperties": false
+          },
+          "encoder": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "gpu": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "StopRefusal": {
+        "description": "A refused stop",
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "request_invalid",
+              "session_unknown"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StopRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "drain": {
+            "default": true,
+            "type": "boolean",
+            "description": "true: finish once the source ends and send the remaining segments and a drained event. false: stop the encoder now"
+          }
+        },
+        "type": "object"
+      },
+      "StopResponse": {
+        "type": "object",
+        "required": [
+          "stopped"
+        ],
+        "properties": {
+          "stopped": {
+            "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarningEvent": {
+        "description": "Source waited unencoded for longer than a segment; at most one every 10 s",
+        "type": "object",
+        "required": [
+          "type",
+          "epoch",
+          "kind",
+          "behind_s"
+        ],
+        "properties": {
+          "type": {
+            "const": "warning"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "const": "behind"
+          },
+          "behind_s": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "examples": [
+          {
+            "type": "warning",
+            "epoch": 1,
+            "kind": "behind",
+            "behind_s": 2.731
+          }
+        ]
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "zio.live-transcode.v1",
+    "kind": "profile",
+    "mode": "persistent",
+    "capabilities": [
+      "live-transcode"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "One session at a time on one GPU's encoder, for its deployment's gateway. It sets no idle timeout, which candidate admission requires"
+    },
+    "attempts": "caller",
+    "readiness": "A test encode with h264_nvenc passes: 2.5 s of a 1080p30 MPEG-TS test source with audio through the whole h264-hls-1080-live ladder, every rendition giving a segment",
+    "presets": {
+      "h264-hls-1080-live": {
+        "summary": "A keyframe-aligned H.264 ladder of up to four renditions, with AAC multiplexed into each",
+        "video": "H.264 High on NVENC (h264_nvenc, preset p4, tune ll, no B-frames), VBR capped at 1.1 times each rung's rate; an IDR every 2 s in every rendition, at the lowest H.264 level that holds the rung",
+        "ladder": [
+          {
+            "name": "1080p",
+            "short_side": 1080,
+            "video_bitrate": 5000000
+          },
+          {
+            "name": "720p",
+            "short_side": 720,
+            "video_bitrate": 3000000
+          },
+          {
+            "name": "480p",
+            "short_side": 480,
+            "video_bitrate": 1400000
+          },
+          {
+            "name": "360p",
+            "short_side": 360,
+            "video_bitrate": 800000
+          }
+        ],
+        "ladder_rule": "Renditions are named and limited by the source's short side; a source smaller than every rung gets one 360p rendition at its own size",
+        "frame_rate": "The source's, halved until it is 60 or less; an unknown rate becomes 30",
+        "audio": "AAC stereo, 128 kb/s, 48 kHz, multiplexed into each rendition when the source has audio",
+        "packaging": "2 s MPEG-TS segments per rendition on its Trickle channel"
+      }
+    },
+    "cost_hint": {
+      "speed": {
+        "h264-hls-1080-live/h264_nvenc/gtx-1650": 1.0
+      },
+      "note": "A session encodes in real time, so runner time is the session's length. Ziply.io measured a 1080p30 four-rung ladder at 1.0x on a GeForce GTX 1650 (2026-10-31)"
+    }
+  }
+}

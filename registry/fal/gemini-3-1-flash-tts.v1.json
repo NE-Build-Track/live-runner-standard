@@ -1,0 +1,682 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fal.gemini-3-1-flash-tts.v1",
+    "version": "1",
+    "description": "fal endpoint fal-ai/gemini-3.1-flash-tts, model fal:fal-ai/gemini-3.1-flash-tts, through the Livepeer fal route adapter. The request and output schemas are fal's own, from its public queue OpenAPI (x-source), with long descriptions shortened and examples and fal's UI hints left out. Behavior is fal.queue.v1's.",
+    "x-source": {
+      "endpoint_id": "fal-ai/gemini-3.1-flash-tts",
+      "openapi_url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/gemini-3.1-flash-tts",
+      "sha256": "eb40b4ec95f1e0cd102959cbe3eec52eea168f590febec52d67ca69b87fc4498"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "operationId": "run",
+        "summary": "Run fal endpoint fal-ai/gemini-3.1-flash-tts",
+        "description": "The body is fal's input for fal-ai/gemini-3.1-flash-tts, forwarded to fal unchanged; a success answer carries fal's output under `output`. Behaves as fal.queue.v1 describes. Each URL output pointer names the URL itself, and a `*` stands for every item of a list. URL fields nested deeper aren't listed in inputs or outputs; the schemas show them.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Gemini31FlashTtsInput"
+              },
+              "examples": {
+                "fal": {
+                  "summary": "Built from fal's own example and default values",
+                  "value": {
+                    "prompt": "I can't believe it worked! [laughing] After all those hours of debugging [sigh] it was just a missing semicolon."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "fal's result, or an error that came after the headers were sent. The body tells them apart: a result has `output`, an error has `error`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdapterResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdapterError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Refused before fal accepted the request: the body is too large, or fal refused it at submit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "fal failed or was unreachable at submit, or the deadline passed before fal accepted the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdapterError"
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "in": "body",
+                "pointer": "/output",
+                "present": true
+              }
+            ]
+          },
+          "errors": [
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "timeout",
+              "kind": "deadline_exceeded",
+              "note": "The adapter's deadline passed: before fal accepted the request (a 504 with no request ID), or while fal was working (a 200 with error.status 504). fal may still finish and charge the operator; once fal has accepted it, the request ID is in the header and at /request_id"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 422,
+              "kind": "input_invalid",
+              "note": "fal refused the input, at submit or when its result was read after queueing (then in a 200); fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/status",
+              "equals": 400,
+              "kind": "input_invalid",
+              "note": "fal refused the request, at submit or when its result was read after queueing"
+            },
+            {
+              "status": 413,
+              "kind": "input_invalid",
+              "note": "The body is larger than the adapter's max_request_bytes, which the operator sets (1 MiB by default)"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "status",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal reported that the request failed or reached an unknown state, or its status couldn't be read; error.status is fal's status, or 502. Unknown: how fal's status marks an input it refuses after queueing, so such refusals land here too; fal's detail is in /error/upstream_body"
+            },
+            {
+              "in": "body",
+              "pointer": "/error/stage",
+              "equals": "result",
+              "kind": "upstream_failed",
+              "note": "In a 200: fal finished, but its result couldn't be read; error.status is fal's status, or 502. The result may still be collectable with the request ID"
+            },
+            {
+              "status": 401,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key"
+            },
+            {
+              "status": 403,
+              "kind": "unavailable",
+              "note": "At submit: fal refused the operator's fal key for this endpoint"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "At submit: fal doesn't know the pinned endpoint"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "At submit: fal is limiting the operator's requests"
+            },
+            {
+              "status": 500,
+              "kind": "upstream_failed",
+              "note": "At submit: fal failed"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed",
+              "note": "At submit: fal was unreachable, or answered without a request ID; fal may have queued the request, and no request ID came back"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "At submit: fal is unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded",
+              "note": "At submit: fal timed out; it may have queued the request, and no request ID came back"
+            }
+          ],
+          "inputs": [
+            {
+              "kind": "inline",
+              "max_bytes": 1048576
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/output/audio/url",
+              "kind": "url",
+              "media_types": [
+                "audio/*"
+              ],
+              "expires": {
+                "after_s": 604800
+              }
+            }
+          ],
+          "cost_hint": {
+            "note": "A call costs the runner's fixed PriceInfo, charged when the node reserves the call, before the adapter runs and whatever the outcome. The answer's billable_units is fal's own count for the request, from its X-Fal-Billable-Units header (null when absent), in a unit that differs by endpoint: a receipt to compare afterwards, not the wholesale charge."
+          },
+          "recovery": {
+            "request_id": {
+              "in": "header",
+              "header": "Livepeer-Provider-Request-Id"
+            },
+            "note": "The header comes with the answer's headers as soon as fal accepts the request, and the body repeats it at /request_id. The adapter has no operation that returns a late result and keeps nothing once it has answered. Collecting one needs fal's queue API (GET https://queue.fal.run/<fal app>/requests/<request ID>, where the fal app is the endpoint ID's first two segments, or three under comfy/ and workflows/) and the operator's fal key, so today only the operator can collect a late result. With sync_mode set, fal keeps no copy to collect."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "File": {
+        "properties": {
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The mime type of the file.",
+            "title": "Content Type"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name of the file. It will be auto-generated if not provided.",
+            "title": "File Name"
+          },
+          "file_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The size of the file in bytes.",
+            "title": "File Size"
+          },
+          "url": {
+            "description": "The URL where the file can be downloaded from.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "File",
+        "type": "object",
+        "x-fal-order-properties": [
+          "url",
+          "content_type",
+          "file_name",
+          "file_size"
+        ]
+      },
+      "Gemini31FlashTtsInput": {
+        "description": "Input for Gemini 3.1 Flash TTS preview speech generation.",
+        "properties": {
+          "enable_safety_checker": {
+            "default": true,
+            "description": "Check input content for safety. Disabling requires account authorization.",
+            "title": "Enable Safety Checker",
+            "type": "boolean"
+          },
+          "language_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Arabic (Egypt)",
+                  "Bangla (Bangladesh)",
+                  "Dutch (Netherlands)",
+                  "English (India)",
+                  "English (US)",
+                  "French (France)",
+                  "German (Germany)",
+                  "Hindi (India)",
+                  "Indonesian (Indonesia)",
+                  "Italian (Italy)",
+                  "Japanese (Japan)",
+                  "Korean (South Korea)",
+                  "Marathi (India)",
+                  "Polish (Poland)",
+                  "Portuguese (Brazil)",
+                  "Romanian (Romania)",
+                  "Russian (Russia)",
+                  "Spanish (Spain)",
+                  "Tamil (India)",
+                  "Telugu (India)",
+                  "Thai (Thailand)",
+                  "Turkish (Turkey)",
+                  "Ukrainian (Ukraine)",
+                  "Vietnamese (Vietnam)",
+                  "Afrikaans (South Africa)",
+                  "Albanian (Albania)",
+                  "Amharic (Ethiopia)",
+                  "Arabic (World)",
+                  "Armenian (Armenia)",
+                  "Azerbaijani (Azerbaijan)",
+                  "Basque (Spain)",
+                  "Belarusian (Belarus)",
+                  "Bulgarian (Bulgaria)",
+                  "Burmese (Myanmar)",
+                  "Catalan (Spain)",
+                  "Cebuano (Philippines)",
+                  "Chinese Mandarin (China)",
+                  "Chinese Mandarin (Taiwan)",
+                  "Croatian (Croatia)",
+                  "Czech (Czech Republic)",
+                  "Danish (Denmark)",
+                  "English (Australia)",
+                  "English (UK)",
+                  "Estonian (Estonia)",
+                  "Filipino (Philippines)",
+                  "Finnish (Finland)",
+                  "French (Canada)",
+                  "Galician (Spain)",
+                  "Georgian (Georgia)",
+                  "Greek (Greece)",
+                  "Gujarati (India)",
+                  "Haitian Creole (Haiti)",
+                  "Hebrew (Israel)",
+                  "Hungarian (Hungary)",
+                  "Icelandic (Iceland)",
+                  "Javanese (Java)",
+                  "Kannada (India)",
+                  "Konkani (India)",
+                  "Lao (Laos)",
+                  "Latin (Vatican City)",
+                  "Latvian (Latvia)",
+                  "Lithuanian (Lithuania)",
+                  "Luxembourgish (Luxembourg)",
+                  "Macedonian (North Macedonia)",
+                  "Maithili (India)",
+                  "Malagasy (Madagascar)",
+                  "Malay (Malaysia)",
+                  "Malayalam (India)",
+                  "Mongolian (Mongolia)",
+                  "Nepali (Nepal)",
+                  "Norwegian Bokmal (Norway)",
+                  "Norwegian Nynorsk (Norway)",
+                  "Odia (India)",
+                  "Pashto (Afghanistan)",
+                  "Persian (Iran)",
+                  "Portuguese (Portugal)",
+                  "Punjabi (India)",
+                  "Serbian (Serbia)",
+                  "Sindhi (India)",
+                  "Sinhala (Sri Lanka)",
+                  "Slovak (Slovakia)",
+                  "Slovenian (Slovenia)",
+                  "Spanish (Latin America)",
+                  "Spanish (Mexico)",
+                  "Swahili (Kenya)",
+                  "Swedish (Sweden)",
+                  "Urdu (Pakistan)"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Language for multilingual synthesis. When set, steers the model to speak in the specified language. If not set, the model auto-detects the language from the text.",
+            "title": "Language Code"
+          },
+          "output_format": {
+            "default": "mp3",
+            "description": "Audio output format. mp3: compressed, small file size (recommended). wav: uncompressed PCM wrapped in WAV (24 kHz, 16-bit mono). ogg_opus: Ogg container with Opus codec, good quality-to-size ratio.",
+            "enum": [
+              "wav",
+              "mp3",
+              "ogg_opus"
+            ],
+            "title": "Output Format",
+            "type": "string"
+          },
+          "prompt": {
+            "description": "The text to convert to speech.",
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "speakers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SpeakerConfig"
+                },
+                "maxItems": 10,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "maxItems": 0,
+                "minItems": 0,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Multi-speaker voice configuration.",
+            "title": "Speakers"
+          },
+          "style_instructions": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional style and delivery instructions prepended to the prompt.",
+            "title": "Style Instructions"
+          },
+          "temperature": {
+            "default": 1,
+            "description": "Controls the randomness of the speech output. Higher values produce more creative and varied delivery, while lower values make the output more predictable and focused.",
+            "maximum": 2,
+            "minimum": 0,
+            "title": "Temperature",
+            "type": "number"
+          },
+          "voice": {
+            "default": "Kore",
+            "description": "Voice preset for single-speaker synthesis.",
+            "enum": [
+              "Achernar",
+              "Achird",
+              "Algenib",
+              "Algieba",
+              "Alnilam",
+              "Aoede",
+              "Autonoe",
+              "Callirrhoe",
+              "Charon",
+              "Despina",
+              "Enceladus",
+              "Erinome",
+              "Fenrir",
+              "Gacrux",
+              "Iapetus",
+              "Kore",
+              "Laomedeia",
+              "Leda",
+              "Orus",
+              "Pulcherrima",
+              "Puck",
+              "Rasalgethi",
+              "Sadachbia",
+              "Sadaltager",
+              "Schedar",
+              "Sulafat",
+              "Umbriel",
+              "Vindemiatrix",
+              "Zephyr",
+              "Zubenelgenubi"
+            ],
+            "title": "Voice",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Gemini31FlashTTSInput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "prompt",
+          "style_instructions",
+          "voice",
+          "language_code",
+          "speakers",
+          "temperature",
+          "output_format",
+          "enable_safety_checker"
+        ]
+      },
+      "Gemini31FlashTtsOutput": {
+        "description": "Output for Gemini text-to-speech generation.",
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/File",
+            "description": "The generated audio file."
+          }
+        },
+        "required": [
+          "audio"
+        ],
+        "title": "GeminiTTSOutput",
+        "type": "object",
+        "x-fal-order-properties": [
+          "audio"
+        ]
+      },
+      "SpeakerConfig": {
+        "description": "Voice configuration for a single speaker in multi-speaker synthesis.",
+        "properties": {
+          "speaker_id": {
+            "description": "Alias used to identify this speaker in the prompt. Use this alias as a prefix in the prompt field, e.g. 'Alice: Hello! Bob: Hi there!'. Must be alphanumeric with no whitespace.",
+            "pattern": "^\\w+$",
+            "title": "Speaker Id",
+            "type": "string"
+          },
+          "voice": {
+            "description": "Voice preset for this speaker.",
+            "enum": [
+              "Achernar",
+              "Achird",
+              "Algenib",
+              "Algieba",
+              "Alnilam",
+              "Aoede",
+              "Autonoe",
+              "Callirrhoe",
+              "Charon",
+              "Despina",
+              "Enceladus",
+              "Erinome",
+              "Fenrir",
+              "Gacrux",
+              "Iapetus",
+              "Kore",
+              "Laomedeia",
+              "Leda",
+              "Orus",
+              "Pulcherrima",
+              "Puck",
+              "Rasalgethi",
+              "Sadachbia",
+              "Sadaltager",
+              "Schedar",
+              "Sulafat",
+              "Umbriel",
+              "Vindemiatrix",
+              "Zephyr",
+              "Zubenelgenubi"
+            ],
+            "title": "Voice",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voice",
+          "speaker_id"
+        ],
+        "title": "SpeakerConfig",
+        "type": "object",
+        "x-fal-order-properties": [
+          "voice",
+          "speaker_id"
+        ]
+      },
+      "AdapterResult": {
+        "description": "A successful answer: fal's output and the adapter's receipt fields",
+        "type": "object",
+        "required": [
+          "billable_units",
+          "billable_units_source",
+          "endpoint_id",
+          "output",
+          "request_id",
+          "schema_sha256"
+        ],
+        "properties": {
+          "billable_units": {
+            "description": "fal's X-Fal-Billable-Units header on the result, or null when it was missing or unreadable. A receipt, not what the node charged",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billable_units_source": {
+            "const": "x-fal-billable-units"
+          },
+          "endpoint_id": {
+            "const": "fal-ai/gemini-3.1-flash-tts",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Gemini31FlashTtsOutput"
+          },
+          "request_id": {
+            "description": "fal's request ID",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema). Not the same digest as an endpoint entry's info.x-source.sha256",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "AdapterError": {
+        "description": "An error, before or after the headers were sent",
+        "type": "object",
+        "required": [
+          "endpoint_id",
+          "error",
+          "schema_sha256"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "const": "fal-ai/gemini-3.1-flash-tts",
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message",
+              "stage",
+              "status"
+            ],
+            "properties": {
+              "message": {
+                "description": "The adapter's own short message",
+                "type": "string"
+              },
+              "stage": {
+                "description": "Where it failed: submitting to fal, polling its status, reading its result, or the deadline",
+                "enum": [
+                  "submit",
+                  "status",
+                  "result",
+                  "timeout"
+                ]
+              },
+              "status": {
+                "description": "The error's HTTP status: the answer's own before the headers were sent; after that, fal's status, or 502 or 504 from the adapter",
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              },
+              "upstream_body": {
+                "description": "fal's error body, at most 4,096 bytes: JSON when it was JSON and not cut, else text"
+              }
+            }
+          },
+          "request_id": {
+            "description": "fal's request ID, once fal has accepted the request",
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_sha256": {
+            "description": "The sha256 of the adapter's schema bundle (GET /schema)",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "fal.gemini-3-1-flash-tts.v1",
+    "kind": "profile",
+    "extends": "fal.queue.v1",
+    "mode": "single-shot",
+    "capabilities": [
+      "text-to-speech"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller",
+    "readiness": "The adapter has loaded its pinned endpoint's route and schema bundle and holds the operator's fal key. It doesn't call fal, so it doesn't yet check the vendor as SPEC asks of a proxy; unknown whether it will."
+  }
+}

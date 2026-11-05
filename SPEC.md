@@ -139,8 +139,8 @@ by pull request:
 | Kind | Capabilities |
 |---|---|
 | Text | `chat`, `embeddings`, `translation`, `decision` |
-| Images | `text-to-image`, `image-edit`, `image-to-3d` |
-| Video | `text-to-video`, `image-to-video`, `video-to-video`, `video-transcode` |
+| Images | `text-to-image`, `image-edit`, `image-to-3d`, `text-to-3d` |
+| Video | `text-to-video`, `image-to-video`, `audio-to-video`, `video-to-video`, `video-transcode` |
 | Audio | `text-to-speech`, `transcription`, `music`, `sound-effects` |
 | Media | `media-tools` |
 | Live sessions | `live-video-to-video`, `live-transcode`, `live-transcription` |
@@ -215,14 +215,17 @@ An entry is an OpenAPI 3.1.0 document with an `x-livepeer` extension at its root
 A profile entry holds:
 
 - **Calls:** each endpoint's default path and method, and its request schema.
-- **Answers:** the response framing (`json`, `sse`, `ndjson`, `binary`), the success rule, and the
-  schema of the body, or of each line or event.
+- **Answers:** the response framing (`json`, `sse`, `ndjson`, `binary`, or several, such as `json`
+  and `sse` for an endpoint that streams on request, told apart by the answer's content type), the
+  success rule, and the schema of the body, or of each line or event.
 - **Errors:** every error the runner returns, mapped to a base kind.
 - **Work reports:** what the runner reports about the work, such as tokens or audio seconds, where it
   appears, and how to ask for it.
 - **Cost hint:** optional, such as typical duration or encode speed, so an app can estimate wholesale
   cost before calling.
 - **Attempts:** whether the caller or the gateway owns retries.
+- **Recovery,** for an adapter in front of a queued backend: where the answer carries the backend's
+  request ID, and which operation collects a late result.
 - **Admission and inputs:** the default admission, and the input and output kinds a caller must bring.
 - **Media hints** (`x-media`) on schema fields that carry media, for forms and players.
 - **Sessions,** for persistent profiles: channels, events, control calls and timeouts.
@@ -231,6 +234,12 @@ A profile entry holds:
 - **Examples,** which validate against the entry's own schemas, **and a conformance suite.**
 
 For `ndjson` and `sse` framing, the response schema and its examples describe one line or event.
+
+Entries point into requests and answers with JSON pointers (RFC 6901), in which a `*` token stands for
+every item of an array or every member of an object: `/data/*/url` names each image's URL. A work
+report reads a number, counts the values a pointer names, sums them, or adds up the lengths of the
+strings it names, and may read the request, such as
+the characters of text to speak. Reports of the same measure add up.
 
 ### The rules
 
@@ -270,6 +279,13 @@ error format: OpenAI-compatible runners still return OpenAI-shaped errors, and t
 | `elsewhere` | No work started; the same request may go to another runner at once | `busy`, `unavailable` |
 | `owner` | Work may have happened; only whoever owns the attempt may retry | `deadline_exceeded`, `output_failed`, `upstream_failed`, `internal` |
 | `after_fix` | The caller must fix something first, such as access to an input | `input_unreadable` |
+
+**How a gateway reads an answer.** It checks the entry's error mappings in order, and the first
+that matches decides the kind, whatever the status. If none matches and the success rule holds, the
+answer succeeded. Otherwise it failed, as `internal`. So an error a runner sends inside a stream, or in
+the body of a 200, is still an error. A mapping can look at the status, the content type, the body,
+the last or any NDJSON line, or the last or any SSE event, and test a value for equality, a regular
+expression, or presence.
 
 An error the entry doesn't map is `internal`.
 
