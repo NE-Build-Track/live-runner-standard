@@ -7,7 +7,7 @@ name = "livepeer-runner-registry"
 # A registry release's version is its date tag (2026.11.1, 2026.11.2…). This placeholder marks a
 # build from an untagged commit; the release workflow writes the tag's version here in the commit it
 # tags. See README.md ("Versions").
-version = "2026.11.1.dev0"
+version = "2026.11.1"
 description = "A registry release of the live runner standard: its wire-profile entries and index, schemas and capability list"
 readme = "README.md"
 license = "MIT"
