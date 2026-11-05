@@ -3,7 +3,7 @@
 The standard's changes, newest first. Registry releases are git tags named by date
 (`2026.11.1`, `2026.11.2`…) and list their entries in the release notes.
 
-## Unreleased
+## 2026.11.1 and v0.1.0, 5 November 2026
 
 ### Runner contract v1
 

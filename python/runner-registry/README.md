@@ -38,7 +38,7 @@ The package version is the registry release's date tag: `2026.11.1`, `2026.11.2`
 placeholder in `pyproject.toml`, `2026.11.1.dev0`, which pip and uv sort before the first release
 and `release()` reports as `None`.
 
-The release workflow, which lands with the first release, sets the version. For each merge to
+The release workflow (`.github/workflows/release.yml`) sets the version. For each merge to
 `main` that changes `registry/`, `schemas/` or `capabilities.json`, it picks the next tag, makes one
 commit on top of the merge that sets `version` in `python/runner-registry/pyproject.toml` to that
 tag, and tags that commit. `main` keeps the placeholder, so no build of an untagged commit can claim

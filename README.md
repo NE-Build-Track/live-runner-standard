@@ -23,9 +23,9 @@ v1 is a clean break. Gateways ignore runners in any earlier metadata format and 
 | [`python/`](python/) | The `runner-contract` builder tool and the Python gateway library ([`livepeer-runner-contract`](python/runner-contract/README.md)), and the registry as a package ([`livepeer-runner-registry`](python/runner-registry/README.md)) |
 | [`importers/fal/`](importers/fal/) | The importer that generates the `fal.*` endpoint entries from fal's public OpenAPI |
 
-Still to come: steward review of the first entries, then the first registry release (`2026.11.1`)
-and `v0.1.0` of the tool and library; `comfystream.*` entries; conformance suites and the
-`conform` command; and the daily fal import workflow.
+Still to come: steward review of the first entries (a change to a released entry is a new major);
+`comfystream.*` entries; conformance suites and the `conform` command; and the daily fal import
+workflow.
 
 ## Building a runner
 
@@ -42,8 +42,7 @@ and `v0.1.0` of the tool and library; `comfystream.*` entries; conformance suite
    `runner-contract block` prints the node's `[[Runners]]` block and `runner-contract check`
    validates one.
 
-The [`runner-contract` tool](python/runner-contract/README.md) installs from this repository's tags
-(until `v0.1.0` is tagged, use `@main`):
+The [`runner-contract` tool](python/runner-contract/README.md) installs from this repository's tags:
 
 ```sh
 uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract" \
@@ -123,10 +122,10 @@ uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
 ## Releases
 
 Each merge that changes `registry/`, `schemas/` or `capabilities.json` becomes a registry release,
-tagged by date (`2026.11.1`, `2026.11.2`…), once the release workflow lands with the first release.
+tagged by date (`2026.11.1`, `2026.11.2`…) by [the release workflow](.github/workflows/release.yml).
 A gateway pins one. The builder tool and the gateway library are tagged separately, by semver
-(`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. Nothing is
-tagged yet, so for now both install from `main`.
+(`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. The first
+releases are `2026.11.1` and `v0.1.0`.
 
 ## License
 

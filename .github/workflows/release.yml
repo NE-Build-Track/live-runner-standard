@@ -1,0 +1,58 @@
+name: release
+
+# A registry release for every merge to main that changes registry/, schemas/ or capabilities.json
+# (README.md, "Releases"). It tags one commit on top of the merge that sets the registry package's
+# version to the tag, so main keeps its placeholder version.
+on:
+  push:
+    branches: [main]
+    paths: ["registry/**", "schemas/**", "capabilities.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RUN: uv run --python 3.12 --with-requirements .github/scripts/requirements.txt
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+      - name: Run checks 1-5
+        run: $RUN python .github/scripts/registry_ci.py all
+      - name: Pick the tag
+        id: tag
+        run: $RUN python .github/scripts/release.py next-tag >> "$GITHUB_OUTPUT"
+      - name: Tag the release
+        if: steps.tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          sed -i -E "s/^version = \"[^\"]+\"/version = \"$TAG\"/" python/runner-registry/pyproject.toml
+          grep -q "^version = \"$TAG\"$" python/runner-registry/pyproject.toml
+          git commit -q -am "Registry release $TAG"
+          git tag -a "$TAG" -m "Registry release $TAG"
+          git push origin "refs/tags/$TAG"
+      - name: Publish the GitHub release
+        if: steps.tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          mkdir -p out
+          cp registry/index.json out/index.json
+          git archive --format=tar.gz --prefix="registry-$TAG/" -o "out/registry-$TAG.tar.gz" "$TAG" \
+            registry schemas capabilities.json LICENSE
+          $RUN python .github/scripts/release.py notes "$TAG" > out/notes.md
+          gh release create "$TAG" out/index.json "out/registry-$TAG.tar.gz" \
+            --title "Registry $TAG" --notes-file out/notes.md --verify-tag
