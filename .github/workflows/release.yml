@@ -52,8 +52,9 @@ jobs:
         run: |
           mkdir -p out
           cp registry/index.json out/index.json
-          git archive --format=tar.gz --prefix="registry-$TAG/" -o "out/registry-$TAG.tar.gz" "$TAG" \
-            $(ls -d registry schemas capabilities.json conformance LICENSE 2>/dev/null)
+          paths=(registry schemas capabilities.json LICENSE)
+          if [ -d conformance ]; then paths+=(conformance); fi
+          git archive --format=tar.gz --prefix="registry-$TAG/" -o "out/registry-$TAG.tar.gz" "$TAG" "${paths[@]}"
           $RUN python .github/scripts/release.py notes "$TAG" > out/notes.md
           gh release create "$TAG" out/index.json "out/registry-$TAG.tar.gz" \
             --title "Registry $TAG" --notes-file out/notes.md --verify-tag
