@@ -1,12 +1,13 @@
 name: release
 
-# A registry release for every merge to main that changes registry/, schemas/ or capabilities.json
+# A registry release for every merge to main that changes registry/, schemas/, capabilities.json or
+# conformance/
 # (README.md, "Releases"). It tags one commit on top of the merge that sets the registry package's
 # version to the tag, so main keeps its placeholder version.
 on:
   push:
     branches: [main]
-    paths: ["registry/**", "schemas/**", "capabilities.json"]
+    paths: ["registry/**", "schemas/**", "capabilities.json", "conformance/**"]
   workflow_dispatch:
 
 permissions:
@@ -52,7 +53,7 @@ jobs:
           mkdir -p out
           cp registry/index.json out/index.json
           git archive --format=tar.gz --prefix="registry-$TAG/" -o "out/registry-$TAG.tar.gz" "$TAG" \
-            registry schemas capabilities.json LICENSE
+            $(ls -d registry schemas capabilities.json conformance LICENSE 2>/dev/null)
           $RUN python .github/scripts/release.py notes "$TAG" > out/notes.md
           gh release create "$TAG" out/index.json "out/registry-$TAG.tar.gz" \
             --title "Registry $TAG" --notes-file out/notes.md --verify-tag

@@ -3,8 +3,8 @@
     python .github/scripts/release.py next-tag    # prints tag=<next tag>, or nothing if no release is due
     python .github/scripts/release.py notes TAG   # prints the release notes for TAG
 
-A registry release is due when registry/, schemas/ or capabilities.json differ from the latest
-release. Tags are by date: <year>.<month>.<n>, with n counting from 1 within each month (UTC).
+A registry release is due when registry/, schemas/, capabilities.json or conformance/ differ from
+the latest release. Tags are by date: <year>.<month>.<n>, with n counting from 1 within each month (UTC).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from registry_ci import RELEASE_TAG, Repo, latest_release
 
-RELEASED_PATHS = ("registry", "schemas", "capabilities.json")
+RELEASED_PATHS = ("registry", "schemas", "capabilities.json", "conformance")
 ROOT = Path(__file__).resolve().parents[2]
 REPO_GIT = "git+https://github.com/NE-Build-Track/live-runner-standard.git"
 

@@ -121,9 +121,9 @@ uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
 
 ## Releases
 
-Each merge that changes `registry/`, `schemas/` or `capabilities.json` becomes a registry release,
-tagged by date (`2026.11.1`, `2026.11.2`…) by [the release workflow](.github/workflows/release.yml).
-A gateway pins one. The builder tool and the gateway library are tagged separately, by semver
+Each merge that changes `registry/`, `schemas/`, `capabilities.json` or `conformance/` becomes a
+registry release, tagged by date (`2026.11.1`, `2026.11.2`…) by
+[the release workflow](.github/workflows/release.yml). A gateway pins one. The builder tool and the gateway library are tagged separately, by semver
 (`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. The first
 releases are `2026.11.1` and `v0.1.0`.
 

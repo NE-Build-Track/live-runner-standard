@@ -5,6 +5,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # the fal import workflow runs it on its pull request's branch
 
 permissions:
   contents: read
