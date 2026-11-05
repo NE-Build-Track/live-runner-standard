@@ -18,13 +18,14 @@ v1 is a clean break. Gateways ignore runners in any earlier metadata format and 
 | [`capabilities.json`](capabilities.json) | The capability list, which is the only thing a runner's App ID may be |
 | [`schemas/`](schemas/) | JSON Schemas for the envelope, a registry entry's `x-livepeer` extension and the conformance report |
 | [`registry/`](registry/) | One entry per wire profile, by namespace, and the generated `index.json` |
+| [`conformance/`](conformance/) | Each profile's conformance suite, which `runner-contract conform` runs against a runner |
 | [`CODEOWNERS`](CODEOWNERS) | Each namespace's steward |
 | [`CHANGELOG.md`](CHANGELOG.md) | Changes to the standard |
 | [`python/`](python/) | The `runner-contract` builder tool and the Python gateway library ([`livepeer-runner-contract`](python/runner-contract/README.md)), and the registry as a package ([`livepeer-runner-registry`](python/runner-registry/README.md)) |
 | [`importers/fal/`](importers/fal/) | The importer that generates the `fal.*` endpoint entries from fal's public OpenAPI |
 
 Still to come: steward review of the first entries (a change to a released entry is a new major);
-`comfystream.*` entries; and conformance suites and the `conform` command.
+`comfystream.*` entries; and conformance suites for the other profiles.
 
 ## Building a runner
 
@@ -44,7 +45,7 @@ Still to come: steward review of the first entries (a change to a released entry
 The [`runner-contract` tool](python/runner-contract/README.md) installs from this repository's tags:
 
 ```sh
-uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract" \
+uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.2.0#subdirectory=python/runner-contract" \
   runner-contract init --capability chat --profile openai.chat.v1
 ```
 
@@ -98,7 +99,7 @@ Commit messages and pull requests carry no co-author or other attribution lines.
 
 ## CI
 
-Every pull request runs five checks before a steward sees it:
+Every pull request runs six checks before a steward sees it:
 
 1. **Schemas.** The three schemas are valid JSON Schema 2020-12. Every entry is a valid OpenAPI 3.1.0
    document whose `x-livepeer` objects match
@@ -111,6 +112,8 @@ Every pull request runs five checks before a steward sees it:
    `extends` target and alias target exists, and every capability an entry names is on the list.
 5. **The capability list.** Names are unique, lowercase and hyphenated, and only `live-*` capabilities
    are persistent.
+6. **Conformance suites.** Every suite in [`conformance/`](conformance/) passes against a reference
+   runner for its profile, and fails against deliberately broken ones (in the `python` job).
 
 Run them locally with [uv](https://docs.astral.sh/uv/):
 
@@ -128,8 +131,8 @@ uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
 Each merge that changes `registry/`, `schemas/`, `capabilities.json` or `conformance/` becomes a
 registry release, tagged by date (`2026.11.1`, `2026.11.2`…) by
 [the release workflow](.github/workflows/release.yml). A gateway pins one. The builder tool and the gateway library are tagged separately, by semver
-(`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. The first
-releases are `2026.11.1` and `v0.1.0`.
+(`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. The latest
+are `2026.11.2` and `v0.2.0`; see [Releases](https://github.com/NE-Build-Track/live-runner-standard/releases).
 
 ## License
 

@@ -4,6 +4,7 @@
     runner-contract envelope runner.toml
     runner-contract block runner.toml [--format toml|json]
     runner-contract check block.toml|registration.json|envelope.json [--manifest runner.toml] [--registry DIR]
+    runner-contract conform --manifest runner.toml [--block block.toml] [--url URL] [--profile ID] [--out report.json]
     runner-contract draft --openapi openapi.json [--profile ID]
     runner-contract draft --pydantic module:Request,module:Response [--profile ID]
 
@@ -20,7 +21,9 @@ from pathlib import Path
 
 from . import __version__
 from .check import check_registrations, read_registrations
+from .conform import Options, SuiteError, Target, available_suites, profiles_to_run, run_suite
 from .draft import draft_from_models, draft_from_openapi
+from .envelope import Envelope, _parse
 from .manifest import Manifest, ManifestError, load_manifest, render_block_json, render_block_toml, render_envelope
 from .registry import EntryKind, Registry, RegistryError
 from .standard import PROFILE_ID, RUNNER_CONTRACT, Capability, Mode, capabilities
@@ -190,6 +193,105 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 1 if problems else 0
 
 
+def _conform_target(args: argparse.Namespace, registry: Registry) -> Target:
+    """The runner under test, from a manifest and/or a block or envelope, with the command line's overrides."""
+    manifest = _manifest(args.manifest, registry) if args.manifest else None
+    metadata, url, health_url, runner_id, source = None, None, None, None, "manifest"
+    registration_problems: tuple[str, ...] | None = None
+    if args.block:
+        try:
+            text = Path(args.block).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise _Usage(f"{args.block}: {exc.strerror or exc}") from exc
+        registrations = [r for r in read_registrations(text, name=args.block) if not r.bare]
+        if args.runner_id:
+            registrations = [r for r in registrations if r.runner_id == args.runner_id]
+        if len(registrations) != 1:
+            raise _Usage(f"{args.block}: holds {len(registrations)} matching registrations; pick one with --runner-id")
+        (reg,) = registrations
+        registration_problems = tuple(
+            check_registrations([reg], registry=registry, capabilities=_capabilities(registry), manifest=manifest)
+        )
+        metadata = reg.metadata if isinstance(reg.metadata, str) else None
+        url = reg.url if isinstance(reg.url, str) else None
+        health_url = reg.health_url if isinstance(reg.health_url, str) else None
+        runner_id, source = reg.runner_id, "block"
+    elif args.envelope:
+        try:
+            metadata = Path(args.envelope).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise _Usage(f"{args.envelope}: {exc.strerror or exc}") from exc
+        source = "envelope"
+    elif manifest is not None:
+        metadata = render_envelope(manifest)
+    if not metadata:
+        raise _Usage("conform needs a runner: pass --manifest, --block or --envelope")
+    parsed = _parse(metadata, limit=None)
+    envelope = parsed if isinstance(parsed, Envelope) else None
+    if envelope is None and manifest is None:
+        raise _Usage(f"the envelope doesn't parse ({parsed}), and no --manifest gives a deployment_revision")
+    model = args.model or (manifest.model.name if manifest and manifest.model else None)
+    if model is None and envelope is not None and envelope.model is not None:
+        model = envelope.model.name
+    runner_id = args.runner_id or runner_id or (manifest.id if manifest else None)
+    if runner_id is None and envelope is not None:
+        runner_id = envelope.runner_id
+    url = args.url or url or (manifest.url if manifest else None)
+    if not runner_id:
+        raise _Usage("no runner ID: pass --runner-id, or give a manifest or block that has one")
+    if not url:
+        raise _Usage("no runner URL: pass --url")
+    return Target(
+        runner_id=runner_id,
+        url=url,
+        metadata=metadata,
+        health_url=args.health_url or health_url or (manifest.health_url if manifest else None),
+        model=model,
+        manifest=manifest,
+        metadata_from=source,
+        registration_problems=registration_problems,
+    )
+
+
+def _report_path(out: str, profile: str, several: bool) -> Path:
+    path = Path(out)
+    return path.with_name(f"{path.stem}.{profile}{path.suffix}") if several else path
+
+
+def cmd_conform(args: argparse.Namespace) -> int:
+    registry = _registry(args.registry, required=True)
+    assert registry is not None
+    target = _conform_target(args, registry)
+    profiles = profiles_to_run(target, registry, args.profile or ())
+    if not profiles:
+        raise _Usage("no profile to conform: the envelope advertises none; pass --profile")
+    missing = [p for p in profiles if p not in available_suites(registry.root or Path("."))]
+    if missing:
+        where = f"registry release {registry.release}" if registry.release else f"the registry at {registry.root}"
+        raise _Usage(f"{where} has no conformance suite for {', '.join(missing)}")
+    options = Options(timeout=args.timeout, health_timeout=args.health_timeout, cancel_settle_s=args.cancel_settle)
+    failed = False
+    for profile in profiles:
+        try:
+            report = run_suite(registry, target, profile, options)
+        except SuiteError as exc:
+            raise _Usage(f"{profile}'s suite can't run: " + "; ".join(exc.problems)) from exc
+        path = _report_path(args.out, profile, len(profiles) > 1)
+        path.write_text(json.dumps(report.document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        counts = {r: sum(1 for c in report.checks if c.result == r) for r in ("pass", "fail", "skip")}
+        for check in report.checks:
+            if check.result != "pass" or args.verbose:
+                print(f"{check.result:4}  {check.id}: {check.detail}", file=sys.stderr)
+        verdict = "pass" if report.passed else "FAIL"
+        print(
+            f"{profile}: {verdict} ({counts['pass']} passed, {counts['fail']} failed, {counts['skip']} skipped); "
+            f"wrote {path}",
+            file=sys.stderr,
+        )
+        failed = failed or not report.passed
+    return 1 if failed else 0
+
+
 def cmd_draft(args: argparse.Namespace) -> int:
     if args.openapi:
         try:
@@ -248,6 +350,34 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--manifest", help="also recompute deployment_revision from this manifest")
     p.add_argument("--registry", help=registry_help)
     p.set_defaults(run=cmd_check)
+
+    p = sub.add_parser("conform", help="run each profile's conformance suite against a running runner")
+    p.add_argument("--manifest", help="the runner's manifest: its envelope, and the inputs to recompute its revision")
+    given = p.add_mutually_exclusive_group()
+    given.add_argument("--block", help="the runner's [[Runners]] block or registration JSON, as registered")
+    given.add_argument("--envelope", help="the runner's envelope, as registered in Metadata")
+    p.add_argument("--url", help="the runner's base URL on its own host (default: the manifest's or block's)")
+    p.add_argument("--health-url", help="its health check (default: the manifest's or block's)")
+    p.add_argument(
+        "--profile", action="append", help="a profile to conform (repeatable; default: every one it advertises)"
+    )
+    p.add_argument("--registry", help=registry_help + "; its conformance/ holds the suites")
+    p.add_argument(
+        "--out", default="conformance-report.json", help="the report; with several profiles, one per profile"
+    )
+    p.add_argument("--runner-id", help="the runner ID for the report (default: the manifest's, block's or envelope's)")
+    p.add_argument("--model", help="the model name requests send (default: the manifest's or envelope's)")
+    p.add_argument("--timeout", type=float, default=120.0, help="seconds to wait on each request (default 120)")
+    p.add_argument(
+        "--health-timeout", type=float, default=10.0, help="seconds to wait on the health check (default 10)"
+    )
+    p.add_argument(
+        "--cancel-settle",
+        type=float,
+        help="seconds to wait after closing a request mid-answer before probing health (default: the common suite's)",
+    )
+    p.add_argument("--verbose", action="store_true", help="print passing checks too")
+    p.set_defaults(run=cmd_conform)
 
     p = sub.add_parser("draft", help="draft a registry entry skeleton for a steward to review")
     source = p.add_mutually_exclusive_group(required=True)

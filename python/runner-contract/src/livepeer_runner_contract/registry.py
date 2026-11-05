@@ -19,11 +19,12 @@ from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import Any
 
-from ._json import ABSENT
+from ._json import ABSENT, json_equal, lookup
 from .envelope import Admission
 from .standard import PROFILE_ID, Capability, Mode, parse_capabilities
 
 __all__ = [
+    "Aggregate",
     "Attempts",
     "Entry",
     "EntryKind",
@@ -39,9 +40,11 @@ __all__ = [
     "SuccessRule",
     "UnknownEndpoint",
     "UnknownProfile",
+    "WorkReport",
 ]
 
 HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
+_RELEASE_DIR = re.compile(r"^registry-([0-9]{4}\.[0-9]{1,2}\.[1-9][0-9]*)$")
 REGISTRY_INSTALL = (
     "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git"
     "@<release>#subdirectory=python/runner-registry"
@@ -83,6 +86,8 @@ class Location(StrEnum):
     ANY_EVENT = "any-event"
     """Any SSE event of the answer (error mappings only)."""
     HEADER = "header"
+    REQUEST = "request"
+    """The request the caller sent (work reports only)."""
 
 
 class Attempts(StrEnum):
@@ -182,6 +187,43 @@ class ErrorMapping:
     """Never set on an error mapping; here so both kinds of condition test alike."""
 
 
+class Aggregate(StrEnum):
+    """How a work report turns what its pointer names into a number."""
+
+    VALUE = "value"
+    """The number at the pointer (several numbers, under a ``*`` pointer, add up)."""
+    COUNT = "count"
+    """How many values the pointer names."""
+    SUM = "sum"
+    """The numbers the pointer names, added."""
+    LENGTH = "length"
+    """The total length of the strings the pointer names."""
+
+
+@dataclass(frozen=True)
+class WorkReport:
+    """One thing a runner reports about the work, where it appears, and how the caller asks for it."""
+
+    measure: str
+    location: Location
+    framing: Framing | None = None
+    event: str | None = None
+    pointer: str | None = None
+    header: str | None = None
+    request_pointer: str | None = None
+    """Where the caller asks for the report, when it must."""
+    request_value: Any = ABSENT
+    """The value it sets there."""
+    aggregate: Aggregate = Aggregate.VALUE
+
+    def asked(self, request: Any) -> bool:
+        """Whether ``request`` asks for this report, or the report needs no asking."""
+        if self.request_pointer is None:
+            return True
+        found = lookup(request, self.request_pointer)
+        return found is not ABSENT and json_equal(found, self.request_value)
+
+
 @dataclass(frozen=True)
 class Operation:
     """One endpoint of a profile: an OpenAPI operation and its ``x-livepeer`` object.
@@ -205,6 +247,7 @@ class Operation:
     """The entry document ``spec`` comes from, which its ``$ref``s resolve against."""
     pointer: str = ""
     """The JSON pointer of ``spec`` within ``document``."""
+    work_reports: tuple[WorkReport, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -328,6 +371,31 @@ def _error(item: Any) -> ErrorMapping:
     )
 
 
+_MEASURES = ("input_tokens", "output_tokens", "images", "audio_seconds", "media_seconds", "characters")
+
+
+def _work_report(item: Any) -> WorkReport:
+    if not isinstance(item, dict) or item.get("measure") not in _MEASURES or "in" not in item:
+        raise _Malformed("each work report needs a measure and `in`")
+    asked = item.get("request")
+    if asked is not None and (not isinstance(asked, dict) or not isinstance(asked.get("pointer"), str)):
+        raise _Malformed("a work report's request needs a pointer and a value")
+    aggregate = item.get("aggregate", "value")
+    if aggregate not in set(Aggregate):
+        raise _Malformed(f"unknown aggregate {aggregate!r}")
+    return WorkReport(
+        measure=item["measure"],
+        location=_location(item["in"]),
+        framing=None if item.get("framing") is None else _framing(item["framing"]),
+        event=_optional_str(item, "event"),
+        pointer=_optional_str(item, "pointer"),
+        header=_optional_str(item, "header"),
+        request_pointer=None if asked is None else asked["pointer"],
+        request_value=ABSENT if asked is None else asked.get("value"),
+        aggregate=Aggregate(aggregate),
+    )
+
+
 def _escape(token: str) -> str:
     return token.replace("~", "~0").replace("/", "~1")
 
@@ -370,6 +438,7 @@ def _own_operations(entry_id: str, doc: Mapping[str, Any], attempts: Attempts | 
                 spec=op,
                 document=doc,
                 pointer=f"/paths/{_escape(route)}/{method}",
+                work_reports=tuple(_work_report(w) for w in x.get("work_reports", [])),
             )
     return out
 
@@ -410,7 +479,7 @@ class Registry:
         )
         """The release's ``capabilities.json``, when the release directory has one."""
         self.release = release
-        """The release tag, such as ``2026.11.1``, when the registry came from a release of the package."""
+        """The release tag, such as ``2026.11.1``: the package's, or a ``registry-<tag>/`` directory's name."""
         self.refused: Mapping[str, str] = MappingProxyType(dict(refused or {}))
         """Entries refused on load, by ID, with the reason (only when loaded with ``strict=False``)."""
         self.root = root
@@ -447,6 +516,10 @@ class Registry:
             registry_dir = given
         else:
             raise RegistryError(f"{given}: holds neither registry/index.json nor index.json")
+        if release is None:
+            # A release tarball unpacks to registry-<tag>/, so its directory names the release.
+            named = _RELEASE_DIR.match(registry_dir.resolve().parent.name)
+            release = named.group(1) if named else None
         return cls._load_dir(registry_dir, release=release, strict=strict)
 
     @classmethod

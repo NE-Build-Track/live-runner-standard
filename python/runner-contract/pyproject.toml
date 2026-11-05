@@ -27,6 +27,7 @@ path = "src/livepeer_runner_contract/__init__.py"
 # the standard as of this release, for parse_envelope and the tool when no registry is at hand.
 [tool.hatch.build.hooks.custom.copy]
 "schemas/envelope.v1.schema.json" = "livepeer_runner_contract/data/envelope.v1.schema.json"
+"schemas/conformance-report.v1.schema.json" = "livepeer_runner_contract/data/conformance-report.v1.schema.json"
 "capabilities.json" = "livepeer_runner_contract/data/capabilities.json"
 "LICENSE" = "livepeer_runner_contract/LICENSE"
 
@@ -64,6 +65,7 @@ cache-keys = [
   { file = "hatch_build.py" },
   { file = "src/**/*.py" },
   { file = "../../schemas/envelope.v1.schema.json" },
+  { file = "../../schemas/conformance-report.v1.schema.json" },
   { file = "../../capabilities.json" },
   { file = "../../LICENSE" },
 ]

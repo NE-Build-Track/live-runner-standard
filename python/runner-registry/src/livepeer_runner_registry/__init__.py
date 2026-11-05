@@ -6,6 +6,7 @@ The data directory mirrors the repository root at the release's tag::
     registry/<namespace>/...    the entries
     schemas/*.json              the envelope, registry-entry and conformance-report schemas
     capabilities.json           the capability list
+    conformance/                the conformance suites, read by ``runner-contract conform``
 
 ``livepeer_runner_contract.Registry.load()`` reads it and checks every entry's digest. This package
 holds no code beyond finding the data.
@@ -28,7 +29,7 @@ except metadata.PackageNotFoundError:  # running from a source tree that isn't i
 
 
 def data_dir() -> Path:
-    """The release's root directory, holding ``registry/``, ``schemas/`` and ``capabilities.json``.
+    """The release's root directory, holding ``registry/``, ``schemas/``, ``capabilities.json`` and ``conformance/``.
 
     An installed wheel carries the data in the package. An editable install or a source tree has no
     copy, so the data is the checkout's own repository root.

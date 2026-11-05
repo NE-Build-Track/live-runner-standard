@@ -72,6 +72,13 @@ def envelope_validator() -> Draft202012Validator:
     return Draft202012Validator(envelope_schema())
 
 
+@cache
+def conformance_report_validator() -> Draft202012Validator:
+    """A validator for ``schemas/conformance-report.v1.schema.json``, which ``conform`` checks its reports with."""
+    path = _standard_file("conformance-report.v1.schema.json", "schemas/conformance-report.v1.schema.json")
+    return Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+
+
 def parse_capabilities(doc: Any) -> dict[str, Capability]:
     """The capabilities in a ``capabilities.json`` document, by name; malformed items are skipped."""
     out: dict[str, Capability] = {}

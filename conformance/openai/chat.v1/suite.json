@@ -1,0 +1,147 @@
+{
+  "conformance_suite": 1,
+  "profile": "openai.chat.v1",
+  "version": "1",
+  "cancel": "chat_completions.sse",
+  "cases": [
+    {
+      "id": "chat_completions.json",
+      "endpoint": "chat_completions",
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Reply with one short sentence."
+          }
+        ],
+        "max_tokens": 16
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/choices/0/message/content"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "chat_completions.sse",
+      "endpoint": "chat_completions",
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Reply with one short sentence."
+          }
+        ],
+        "max_tokens": 16,
+        "stream": true,
+        "stream_options": {
+          "include_usage": true
+        }
+      },
+      "expect": {
+        "framing": "sse"
+      },
+      "content": [
+        {
+          "in": "any-event",
+          "pointer": "/choices/*/delta/content"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "chat_completions.invalid",
+      "endpoint": "chat_completions",
+      "note": "No messages: the request schema needs at least one",
+      "request": {
+        "model": "$model",
+        "messages": [],
+        "max_tokens": 16
+      },
+      "valid": false,
+      "expect": {
+        "kinds": [
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "chat_completions.context_tokens",
+      "endpoint": "chat_completions",
+      "note": "A prompt past the runner's advertised limits.context_tokens is refused with a declared error",
+      "limit": {
+        "name": "context_tokens"
+      },
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "$fill"
+          }
+        ],
+        "max_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported"
+        ]
+      }
+    },
+    {
+      "id": "chat_completions.inline_cap",
+      "endpoint": "chat_completions",
+      "note": "An inline input past the entry's max_bytes for /messages is refused with a declared error",
+      "limit": {
+        "input": "/messages"
+      },
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "$fill"
+          }
+        ],
+        "max_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "chat_completions.max_input_bytes",
+      "endpoint": "chat_completions",
+      "note": "A body past the runner's advertised limits.max_input_bytes is refused with a declared error",
+      "limit": {
+        "name": "max_input_bytes"
+      },
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "$fill"
+          }
+        ],
+        "max_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    }
+  ]
+}

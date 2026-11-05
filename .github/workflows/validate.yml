@@ -1,6 +1,7 @@
 name: validate
 
-# CI checks 1-5 (README.md, "CI"), plus tests and lint for the scripts that run them.
+# CI checks 1-5 (README.md, "CI") and, in the python job, check 6 (each conformance suite against its
+# reference runner), plus tests and lint for the scripts that run them.
 on:
   pull_request:
   push:
@@ -65,7 +66,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Test both packages
-        run: $RUN pytest -q python
+        run: $RUN pytest -q python --ignore=python/runner-contract/tests/test_suites.py
+      - name: CI check 6 (every conformance suite passes against its reference runner, and fails a broken one)
+        run: $RUN pytest -q python/runner-contract/tests/test_suites.py
       - name: Lint
         run: |
           $RUN ruff check --line-length 120 python

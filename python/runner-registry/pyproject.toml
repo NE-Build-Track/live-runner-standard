@@ -23,6 +23,7 @@ Repository = "https://github.com/NE-Build-Track/live-runner-standard"
 "registry" = "livepeer_runner_registry/data/registry"
 "schemas" = "livepeer_runner_registry/data/schemas"
 "capabilities.json" = "livepeer_runner_registry/data/capabilities.json"
+"conformance" = "livepeer_runner_registry/data/conformance"
 "LICENSE" = "livepeer_runner_registry/LICENSE"
 
 [tool.hatch.build.targets.wheel]
@@ -60,5 +61,6 @@ cache-keys = [
   { file = "../../registry/**/*.json" },
   { file = "../../schemas/*.json" },
   { file = "../../capabilities.json" },
+  { file = "../../conformance/**/*" },
   { file = "../../LICENSE" },
 ]

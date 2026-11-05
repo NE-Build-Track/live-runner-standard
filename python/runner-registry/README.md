@@ -1,9 +1,10 @@
 # livepeer-runner-registry
 
 A registry release of the [live runner standard](https://github.com/NE-Build-Track/live-runner-standard),
-as a Python package: the wire-profile entries and `registry/index.json`, the three schemas and
-`capabilities.json`, exactly as they are at the release's tag. The repository root is the only copy
-in git; the build copies the files in (see `hatch_build.py`).
+as a Python package: the wire-profile entries and `registry/index.json`, the three schemas,
+`capabilities.json` and the conformance suites (`conformance/`), exactly as they are at the
+release's tag. The repository root is the only copy in git; the build copies the files in (see
+`hatch_build.py`).
 
 A gateway pins a release by installing its tag, and reads it with the gateway library,
 [`livepeer-runner-contract`](../runner-contract/README.md):
@@ -25,7 +26,7 @@ of the same name from another index can stand in for it.
 
 | Name | What it is |
 |---|---|
-| `data_dir() -> Path` | The release's root: `registry/`, `schemas/` and `capabilities.json` |
+| `data_dir() -> Path` | The release's root: `registry/`, `schemas/`, `capabilities.json` and `conformance/` |
 | `release() -> str \| None` | The release tag this package holds, such as `2026.11.1`; `None` for a build of an untagged commit |
 | `__version__` | The package version |
 
@@ -39,7 +40,7 @@ placeholder in `pyproject.toml`, `2026.11.1.dev0`, which pip and uv sort before 
 and `release()` reports as `None`.
 
 The release workflow (`.github/workflows/release.yml`) sets the version. For each merge to
-`main` that changes `registry/`, `schemas/` or `capabilities.json`, it picks the next tag, makes one
+`main` that changes `registry/`, `schemas/`, `capabilities.json` or `conformance/`, it picks the next tag, makes one
 commit on top of the merge that sets `version` in `python/runner-registry/pyproject.toml` to that
 tag, and tags that commit. `main` keeps the placeholder, so no build of an untagged commit can claim
 a release's version.

@@ -22,10 +22,12 @@ WHEEL_DATA = {
         "registry": "livepeer_runner_registry/data/registry",
         "schemas": "livepeer_runner_registry/data/schemas",
         "capabilities.json": "livepeer_runner_registry/data/capabilities.json",
+        "conformance": "livepeer_runner_registry/data/conformance",
         "LICENSE": "livepeer_runner_registry/LICENSE",
     },
     "livepeer_runner_contract": {
         "schemas/envelope.v1.schema.json": "livepeer_runner_contract/data/envelope.v1.schema.json",
+        "schemas/conformance-report.v1.schema.json": "livepeer_runner_contract/data/conformance-report.v1.schema.json",
         "capabilities.json": "livepeer_runner_contract/data/capabilities.json",
         "LICENSE": "livepeer_runner_contract/LICENSE",
     },

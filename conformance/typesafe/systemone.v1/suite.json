@@ -1,0 +1,148 @@
+{
+  "conformance_suite": 1,
+  "profile": "typesafe.systemone.v1",
+  "version": "1",
+  "cancel": "systemone.json",
+  "cases": [
+    {
+      "id": "systemone.json",
+      "endpoint": "systemone",
+      "request": {
+        "model": "$model",
+        "state": "The parcel arrived damaged.",
+        "questions": {
+          "needs_help": {
+            "type": "noul",
+            "instructions": "Does the customer need help?"
+          }
+        }
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/answers/*"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "systemone.choice",
+      "endpoint": "systemone",
+      "request": {
+        "model": "$model",
+        "state": {
+          "subject": "Duplicate charge",
+          "message": "I was charged twice."
+        },
+        "questions": {
+          "tone": {
+            "type": "choice",
+            "instructions": "What is the tone?",
+            "criteria": {
+              "calm": null,
+              "angry": null
+            }
+          }
+        }
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/answers/tone/probabilities"
+        }
+      ]
+    },
+    {
+      "id": "systemone.invalid",
+      "endpoint": "systemone",
+      "note": "No questions: the request schema requires them",
+      "request": {
+        "model": "$model",
+        "state": "The parcel arrived damaged."
+      },
+      "valid": false,
+      "expect": {
+        "kinds": [
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "systemone.context_tokens",
+      "endpoint": "systemone",
+      "note": "A prompt past the runner's advertised limits.context_tokens is refused with a declared error",
+      "limit": {
+        "name": "context_tokens"
+      },
+      "request": {
+        "model": "$model",
+        "state": "$fill",
+        "questions": {
+          "needs_help": {
+            "type": "noul",
+            "instructions": "Does the customer need help?"
+          }
+        }
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported"
+        ]
+      }
+    },
+    {
+      "id": "systemone.inline_cap",
+      "endpoint": "systemone",
+      "note": "An inline input past the entry's max_bytes for /state is refused with a declared error",
+      "limit": {
+        "input": "/state"
+      },
+      "request": {
+        "model": "$model",
+        "state": "$fill",
+        "questions": {
+          "needs_help": {
+            "type": "noul",
+            "instructions": "Does the customer need help?"
+          }
+        }
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "systemone.max_input_bytes",
+      "endpoint": "systemone",
+      "note": "A body past the runner's advertised limits.max_input_bytes is refused with a declared error",
+      "limit": {
+        "name": "max_input_bytes"
+      },
+      "request": {
+        "model": "$model",
+        "state": "$fill",
+        "questions": {
+          "needs_help": {
+            "type": "noul",
+            "instructions": "Does the customer need help?"
+          }
+        }
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    }
+  ]
+}

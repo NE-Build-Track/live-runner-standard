@@ -1,0 +1,10 @@
+{
+  "conformance_common": 1,
+  "version": "1",
+  "note": "The thresholds of the checks every suite runs; the checks are runner-contract conform's (SPEC.md, 'How every runner behaves')",
+  "headers_within_s": 1,
+  "keepalive_s": 15,
+  "cancel_within_s": 10,
+  "cancel_settle_s": 2,
+  "health": {"entry": "livepeer.health.v1", "schema": "Health"}
+}

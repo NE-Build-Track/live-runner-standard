@@ -335,4 +335,4 @@ def test_draft_problems_are_usage_errors(tmp_path: Path, capsys: pytest.CaptureF
 def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["--version"])
-    assert capsys.readouterr().out.strip() == "runner-contract 0.1.0"
+    assert capsys.readouterr().out.strip() == "runner-contract 0.2.0"

@@ -15,7 +15,15 @@ from referencing.jsonschema import DRAFT202012
 from ._json import ABSENT, escape, lookup
 from .registry import Operation, Registry
 
-__all__ = ["RequestCheck", "is_json_media_type", "media_type_matches", "validate_request"]
+__all__ = [
+    "RequestCheck",
+    "SchemaCheck",
+    "is_json_media_type",
+    "media_type_matches",
+    "response_schema",
+    "validate_request",
+    "validate_response",
+]
 
 _ENTRY = "urn:livepeer-registry-entry"
 
@@ -32,6 +40,10 @@ class RequestCheck:
 
     def __bool__(self) -> bool:
         return self.ok
+
+
+SchemaCheck = RequestCheck
+"""The same result type, for checks of answers against an entry's response schemas."""
 
 
 def _media_type(content_type: str) -> str:
@@ -62,7 +74,7 @@ def _request_body(operation: Operation) -> tuple[dict[str, Any] | None, str]:
 
 
 def _validator(registry: Registry, operation: Operation, pointer: str) -> Draft202012Validator:
-    key = ("request", operation.defined_in, operation.name, pointer)
+    key = (operation.defined_in, operation.name, pointer)
     cached = registry._validators.get(key)
     if cached is None:
         resource: Resource[Any] = Resource.from_contents(operation.document, default_specification=DRAFT202012)
@@ -124,3 +136,61 @@ def validate_request(
         where = "/" + "/".join(escape(str(p)) for p in error.absolute_path)
         problems.append(f"at {where}: {error.message}" if error.absolute_path else error.message)
     return RequestCheck(tuple(problems))
+
+
+def response_schema(operation: Operation, status: int, content_type: str | None) -> str | None:
+    """The JSON pointer of the schema for an answer with this status and content type, or None.
+
+    The response is the status's own, else its range's (``4XX``), else ``default``, as in OpenAPI.
+    For ``sse`` and ``ndjson`` answers the schema describes one event's data or one line (SPEC.md).
+    """
+    responses = operation.spec.get("responses")
+    if not isinstance(responses, dict):
+        return None
+    for code in (str(status), f"{status // 100}XX", "default"):
+        if code in responses:
+            break
+    else:
+        return None
+    response = responses[code]
+    pointer = f"{operation.pointer}/responses/{escape(code)}"
+    if isinstance(response, dict) and isinstance(response.get("$ref"), str) and response["$ref"].startswith("#"):
+        pointer = response["$ref"][1:]
+        response = lookup(operation.document, pointer)
+    content = response.get("content") if isinstance(response, dict) else None
+    if not isinstance(content, dict) or not content_type:
+        return None
+    media = next((name for name in content if media_type_matches(name, content_type)), None)
+    if media is None or not isinstance(content[media], dict) or "schema" not in content[media]:
+        return None
+    return f"{pointer}/content/{escape(media)}/schema"
+
+
+def validate_response(
+    registry: Registry,
+    profile: str,
+    endpoint: str,
+    value: Any,
+    *,
+    status: int,
+    content_type: str | None,
+) -> SchemaCheck | None:
+    """Check an answer's decoded body (or one SSE event's data, or one NDJSON line) against its schema.
+
+    None when the entry declares no schema for that status and content type.
+    """
+    operation = registry.operation(profile, endpoint)
+    pointer = response_schema(operation, status, content_type)
+    if pointer is None:
+        return None
+    try:
+        errors = sorted(
+            _validator(registry, operation, pointer).iter_errors(value), key=lambda e: list(map(str, e.path))
+        )
+    except Unresolvable as exc:
+        return SchemaCheck((f"the entry's response schema can't be resolved: {exc}",))
+    problems = []
+    for error in errors:
+        where = "/" + "/".join(escape(str(p)) for p in error.absolute_path)
+        problems.append(f"at {where}: {error.message}" if error.absolute_path else error.message)
+    return SchemaCheck(tuple(problems))

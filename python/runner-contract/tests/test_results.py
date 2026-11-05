@@ -193,7 +193,8 @@ def test_pointers_with_star_name_every_item() -> None:
     assert lookup_all(doc, "/data/*/url") == ["a", "c"]
     assert lookup_all(doc, "/data/1/b64") == ["x"]
     assert lookup_all(doc, "/data/*/none") == []
-    assert lookup_all(doc, "/*") == [2]  # on an object, * is a key
+    assert lookup_all(doc, "/*") == [doc["data"], doc["a/b"], 2]  # on an object, every member
+    assert lookup_all({"answers": {"a": {"p": 1}, "b": {"p": 2}}}, "/answers/*/p") == [1, 2]
     assert lookup_all(doc, "/a~1b/~0") == [1]
     assert lookup_all(doc, "") == [doc]
     assert lookup(doc, "/data/01") is ABSENT and lookup(doc, "/data/2/url") == "c"

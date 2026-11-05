@@ -15,13 +15,26 @@ from __future__ import annotations
 import codecs
 import json
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any
 
 from ._json import ABSENT, json_equal, lookup_all
-from .registry import ErrorKind, ErrorMapping, FinalCondition, Framing, Location, Operation, Registry, Retry
+from .registry import (
+    Aggregate,
+    ErrorKind,
+    ErrorMapping,
+    FinalCondition,
+    Framing,
+    Location,
+    Operation,
+    Registry,
+    Retry,
+    WorkReport,
+)
 
-__all__ = ["Classification", "Result", "ResultReader", "classify", "framing_of", "read_result"]
+__all__ = ["Classification", "Result", "ResultReader", "classify", "framing_of", "read_result", "split_stream"]
 
 DEFAULT_MAX_BUFFER = 16 * 1024 * 1024
 _NEWLINE = re.compile(r"\r\n|\r|\n")
@@ -50,6 +63,8 @@ class Result:
     """Why the answer isn't success."""
     error: Classification | None = None
     """The error's base kind and retry rule, when the answer isn't success."""
+    work: Mapping[str, int | float] = field(default_factory=lambda: MappingProxyType({}))
+    """What the runner reported about the work, by measure, with reports of the same measure added up."""
 
 
 def framing_of(content_type: str | None, declared: tuple[Framing, ...] = ()) -> Framing | None:
@@ -166,6 +181,48 @@ def _test(condition: FinalCondition | ErrorMapping, unit: _Unit) -> bool:
     return pattern is None or any(pattern.search(_as_string(v)) for v in values)
 
 
+def _measure(report: WorkReport, value: Any) -> int | float | None:
+    """What a work report reads from one value, or None when the value doesn't carry it."""
+    if value is ABSENT or report.pointer is None:
+        return None
+    values = lookup_all(value, report.pointer)
+    if report.aggregate is Aggregate.COUNT:
+        return len(values)
+    if report.aggregate is Aggregate.LENGTH:
+        strings = [v for v in values if isinstance(v, str)]
+        return sum(len(v) for v in strings) if strings else None
+    numbers = [v for v in values if isinstance(v, int | float) and not isinstance(v, bool)]
+    return sum(numbers) if numbers else None
+
+
+def _header_number(headers: Mapping[str, str], name: str) -> int | float | None:
+    text = headers.get(name.lower())
+    if text is None:
+        return None
+    try:
+        number = float(text.strip())
+    except ValueError:
+        return None
+    return int(number) if number.is_integer() else number
+
+
+def split_stream(framing: Framing | None, body: bytes) -> list[tuple[str | None, str]]:
+    """A whole NDJSON or SSE answer as its lines or events: (event type, text), the type None for a line."""
+    if framing not in (Framing.SSE, Framing.NDJSON):
+        return []
+    lines = _Lines(len(body) + 1)
+    out: list[tuple[str | None, str]] = []
+    events = _Events() if framing is Framing.SSE else None
+    for line in lines.feed(body, final=True):
+        if events is not None:
+            event = events.line(line)
+            if event is not None:
+                out.append(event)
+        elif line.strip():
+            out.append((None, line))
+    return out  # as in SSE parsing, an event the stream doesn't finish with a blank line isn't one
+
+
 def _describe(condition: FinalCondition) -> str:
     parts = [condition.location.value]
     if condition.event is not None:
@@ -197,11 +254,15 @@ class ResultReader:
         status: int,
         content_type: str | None,
         max_buffer: int = DEFAULT_MAX_BUFFER,
+        request: Any = ABSENT,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.operation = operation
         self.status = status
         self.content_type = content_type
         self.framing = framing_of(content_type, operation.framings)
+        self._request = request
+        self._headers = {k.lower(): v for k, v in (headers or {}).items()}
         self._max = max_buffer
         self._body = bytearray()
         self._overflow = False
@@ -212,6 +273,8 @@ class ResultReader:
         stream = {Framing.SSE: Location.ANY_EVENT, Framing.NDJSON: Location.ANY_LINE}.get(self.framing or Framing.JSON)
         self._any = [m for m in operation.errors if stream is not None and m.location is stream]
         self._matched: set[int] = set()
+        self._reports = [r for r in operation.work_reports if r.framing is None or r.framing is self.framing]
+        self._reported: dict[int, int | float] = {}  # any-line and any-event reports: the last match
         self._result: Result | None = None
         self._classification: Classification | None = None
 
@@ -240,6 +303,32 @@ class ResultReader:
         for i, mapping in enumerate(self._any):
             if i not in self._matched and _test(mapping, unit):
                 self._matched.add(i)
+        stream = Location.ANY_EVENT if self.framing is Framing.SSE else Location.ANY_LINE
+        for i, report in enumerate(self._reports):
+            if report.location is stream and (report.event is None or report.event == unit.event):
+                values = [] if unit.value is ABSENT else lookup_all(unit.value, report.pointer or "")
+                number = _measure(report, unit.value) if values else None
+                if number is not None:
+                    self._reported[i] = number
+
+    def _work(self, body: _Unit | None) -> dict[str, int | float]:
+        """Every work report the answer carries, added up by measure."""
+        work: dict[str, int | float] = {}
+        for i, report in enumerate(self._reports):
+            if report.location in (Location.ANY_LINE, Location.ANY_EVENT):
+                number = self._reported.get(i)
+            elif report.location is Location.HEADER:
+                number = None if report.header is None else _header_number(self._headers, report.header)
+            elif report.location is Location.REQUEST:
+                number = _measure(report, self._request)
+            else:
+                unit = body if report.location is Location.BODY else self._at(report.location)
+                if unit is not None and report.event is not None and unit.event != report.event:
+                    unit = None
+                number = None if unit is None else _measure(report, unit.value)
+            if number is not None:
+                work[report.measure] = work.get(report.measure, 0) + number
+        return work
 
     def _at(self, location: Location | None) -> _Unit | None:
         if location is Location.BODY:
@@ -280,18 +369,19 @@ class ResultReader:
         unit = body if self.framing is Framing.JSON else self._at(_UNIT.get(self.framing or Framing.BINARY))
         value = None if unit is None or unit.value is ABSENT else unit.value
 
+        work = MappingProxyType(self._work(body))
         for number, mapping in enumerate(op.errors, 1):
             if self._mapping_matches(mapping, body):
                 self._classification = Classification(mapping.kind, mapping.kind.retry, mapping)
                 why = f"the answer matches error mapping #{number} of {op.name}: {mapping.kind.value}"
-                self._result = Result(False, self.status, self.framing, value, why, self._classification)
+                self._result = Result(False, self.status, self.framing, value, why, self._classification, work)
                 return self._result
         self._classification = Classification(ErrorKind.INTERNAL, ErrorKind.INTERNAL.retry)
         failure = self._success_failure(body)
         if failure is None:
-            self._result = Result(True, self.status, self.framing, value)
+            self._result = Result(True, self.status, self.framing, value, work=work)
         else:
-            self._result = Result(False, self.status, self.framing, value, failure, self._classification)
+            self._result = Result(False, self.status, self.framing, value, failure, self._classification, work)
         return self._result
 
     def _success_failure(self, body: _Unit | None) -> str | None:
@@ -329,9 +419,20 @@ def read_result(
     status: int,
     content_type: str | None,
     body: bytes | str,
+    request: Any = ABSENT,
+    headers: Mapping[str, str] | None = None,
 ) -> Result:
-    """Read a whole answer from ``endpoint`` of ``profile``: success, or the error's kind and retry rule."""
-    reader = ResultReader(registry.operation(profile, endpoint), status=status, content_type=content_type)
+    """Read a whole answer from ``endpoint`` of ``profile``: success, or the error's kind and retry rule.
+
+    Give the ``request`` that was sent and the answer's ``headers`` to read work reports found there.
+    """
+    reader = ResultReader(
+        registry.operation(profile, endpoint),
+        status=status,
+        content_type=content_type,
+        request=request,
+        headers=headers,
+    )
     reader.feed(body.encode("utf-8") if isinstance(body, str) else body)
     return reader.finish()
 

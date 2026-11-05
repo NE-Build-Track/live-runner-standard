@@ -2,7 +2,8 @@
 
 Runner contract v1, the [live runner standard](https://github.com/NE-Build-Track/live-runner-standard),
 for Python: the `runner-contract` builder tool, and the gateway library that reads envelopes and
-registry entries. Version 0.1.0 implements `runner_contract: 1` as [`SPEC.md`](../../SPEC.md) states it.
+registry entries. Version 0.2 implements `runner_contract: 1` as
+[`SPEC.md`](../../SPEC.md) states it, and adds `conform`; 0.1.0 is the latest tag.
 
 The library makes no network calls and holds no policy. Approvals, routes and retail rules stay in
 each gateway; the library reads what runners publish and what the registry says.
@@ -40,6 +41,7 @@ it. Python 3.12 or later; the only dependencies are `jsonschema` and `referencin
 | `runner-contract envelope runner.toml` | Prints the envelope as compact JSON, with `deployment_revision` computed by the SPEC's recipe. Fails over 1,024 bytes |
 | `runner-contract block runner.toml [--format toml\|json]` | Prints the node's static `[[Runners]]` block, or the JSON a runner sends to `POST /runners/heartbeat` |
 | `runner-contract check FILE [--manifest runner.toml] [--registry DIR]` | Checks a `[[Runners]]` block, a registration JSON or a bare envelope: one line per problem, exit 1 if any |
+| `runner-contract conform --manifest runner.toml [--block FILE \| --envelope FILE] [--url URL] [--profile ID] [--out report.json]` | Runs each profile's conformance suite against the running runner, on its own host, and writes a report per profile. See [Conformance](#conformance) |
 | `runner-contract draft --openapi FILE [--profile ID]` | Drafts a registry entry from a runner's OpenAPI document (JSON), for a steward to review |
 | `runner-contract draft --pydantic module:Request,module:Response [--profile ID]` | Drafts one from pydantic models (pydantic must be installed alongside) |
 
@@ -61,7 +63,102 @@ reports:
   `HealthURL` (without one the node treats the runner as always healthy);
 - with `--manifest`, a `deployment_revision` the manifest doesn't recompute to.
 
-`conform`, which runs a profile's conformance suite, comes in a later release.
+## Conformance
+
+`runner-contract conform` proves a runner speaks its profiles (SPEC.md, "Conformance, interim"). It
+runs on the runner's own host and calls the runner directly at `--url`: no node, no payment. The
+builder attaches each report it writes to an approval request. It is new in 0.2: until `v0.2.0` is
+tagged, install from `main` (`@main` in place of `@v0.1.0` above).
+
+```sh
+runner-contract conform --manifest runner.toml --registry path/to/registry-2026.11.2 --out report.json
+```
+
+| Option | What it does |
+|---|---|
+| `--manifest FILE` | The runner's manifest: the envelope (if no block or envelope is given), and the inputs that recompute `deployment_revision` |
+| `--block FILE` or `--envelope FILE` | The registration as registered: a `[[Runners]]` block or registration JSON (whose fields `check` also checks), or a bare envelope |
+| `--url URL`, `--health-url URL` | Where to reach the runner and its health check (default: the manifest's or block's) |
+| `--profile ID` | A profile to conform, repeatable (default: every profile the envelope advertises) |
+| `--registry DIR` | The registry release whose entries and `conformance/` suites to use (default: the installed `livepeer-runner-registry`). A directory named `registry-<tag>`, as the release tarball unpacks, names the release in the report |
+| `--out FILE` | The report (default `conformance-report.json`); with several profiles, `conformance-report.<profile>.json` each |
+| `--runner-id ID`, `--model NAME` | The report's runner ID and the model name requests send, where the manifest, block or envelope doesn't say |
+| `--timeout S`, `--health-timeout S`, `--cancel-settle S` | Seconds to wait on each request (120), on health (10), and after closing a request mid-answer before probing (the common suite's 2) |
+| `--verbose` | Print passing checks too; failures and skips always print |
+
+Exit status: 0 when every report passes, 1 when a check failed, 2 for a usage error (no runner, no
+suite for a profile, a suite that can't run). Each report follows
+[`conformance-report.v1.schema.json`](../../schemas/conformance-report.v1.schema.json): runner ID,
+`deployment_revision`, profile, `registry_release` (when known), `suite` (`id` is the profile,
+`version` is `<suite version>+common.<common version>`), `tool`, start and finish times, every
+check, and `pass`, true only when no check failed.
+
+**The checks.** Every suite runs the common checks, with the thresholds in `conformance/common/`:
+
+| Check | Passes when |
+|---|---|
+| `common.envelope` | The envelope is a valid `runner_contract: 1` envelope of at most 1,024 bytes |
+| `common.revision` | The manifest recomputes the envelope's `deployment_revision` (skipped without a manifest) |
+| `common.profile` | The envelope advertises an endpoint of the profile |
+| `common.registration` | A given block's fields read as the node reads them, as `check` says (skipped without a block) |
+| `common.health.ready`, `common.health.after` | Health answers 200 with a `livepeer.health.v1` body whose status is `ready`, before the cases and after them |
+| `common.health.starting` | Always skipped: a black-box tool can't make the runner unready |
+| `common.cancel` | After the suite's `cancel` case is closed mid-answer (a stream after its first bytes; a JSON request before its answer), health stays ready and the next request succeeds. That the work stopped within 10 s can't be seen from outside |
+
+Then each case of the profile's suite runs, giving `<case>.request` (the request is valid against
+the entry, or invalid where the case says so), `<case>.headers` (a streamed answer's headers within 1 s; skipped for one that isn't streamed),
+`<case>.answer` (`read_result`: success with the expected framing, or an error of an expected base
+kind), `<case>.schema` (the body, or every SSE event or NDJSON line, matches the entry's response
+schema), `<case>.content` (non-empty values where the case looks, so model output stays loose),
+`<case>.work_reports` (every measure the entry reports for that framing, where the request asks
+for it as the entry says), and for streams `<case>.keepalive` (no wait over 15 s between bytes). A
+limit case the runner's envelope doesn't advertise the limit for is skipped.
+
+**The suite format.** A suite is `conformance/<namespace>/<name>.v<major>/suite.json`:
+
+```json
+{
+  "conformance_suite": 1,
+  "profile": "openai.chat.v1",
+  "version": "1",
+  "cancel": "chat_completions.sse",
+  "cases": [
+    {"id": "chat_completions.json", "endpoint": "chat_completions",
+     "request": {"model": "$model", "messages": [{"role": "user", "content": "Reply with one short sentence."}], "max_tokens": 16},
+     "expect": {"framing": "json"},
+     "content": [{"in": "body", "pointer": "/choices/0/message/content"}],
+     "work_reports": true},
+    {"id": "chat_completions.invalid", "endpoint": "chat_completions",
+     "request": {"model": "$model", "messages": [], "max_tokens": 16}, "valid": false,
+     "expect": {"kinds": ["input_invalid"]}},
+    {"id": "chat_completions.context_tokens", "endpoint": "chat_completions", "limit": {"name": "context_tokens"},
+     "request": {"model": "$model", "messages": [{"role": "user", "content": "$fill"}], "max_tokens": 1},
+     "expect": {"kinds": ["input_unsupported"]}}
+  ]
+}
+```
+
+| Key | Holds |
+|---|---|
+| `conformance_suite`, `profile`, `version` | `1`; the entry ID its directory names; the suite's version, raised whenever its cases change |
+| `cancel` | The case the cancellation check starts and abandons; optional |
+| `cases[].id`, `endpoint` | A unique ID (it prefixes the case's checks), and the operationId to call |
+| `cases[].request` | The JSON body. The string `"$model"` becomes the runner's model name, and `"$fill"` the text that pushes a limit case past its limit |
+| `cases[].expect` | `{"framing": "json" \| "sse" \| "ndjson"}`: success with that framing. `{"kinds": [...]}`: an error of one of these base kinds |
+| `cases[].valid` | `false` for a request that must break the entry's request schema (the check confirms it does) |
+| `cases[].content` | `[{"in": "body" \| "last-line" \| "any-line" \| "last-event" \| "any-event", "pointer": "…"}]`: each must name a non-empty value |
+| `cases[].work_reports` | `true` to require every measure the entry reports for the answer's framing |
+| `cases[].limit` | `{"name": "context_tokens"}` or `{"name": "max_input_bytes"}`: an envelope limit, skipped when the runner doesn't advertise it. `{"input": "/messages"}`: the entry's `max_bytes` for that input |
+| `note` | Prose for the steward, on the suite or a case |
+
+**Adding a suite.** A steward adds `conformance/<namespace>/<name>.v<major>/suite.json` for an entry
+in their namespace, and a reference runner for it in `tests/reference/profiles.py`: a `Behaviour`
+that answers as the entry says, including its error formats. CI check 6
+(`tests/test_suites.py`) runs every suite against its reference runner and fails a suite that has
+none, one the reference runner fails, and one a deliberately broken runner passes; add a broken
+case to `BROKEN` there for anything new the suite checks. Run one by hand with
+`python tests/reference/server.py openai.chat.v1 --port 8765` and point `conform --url` at it.
+Suites ship in registry releases, so a builder's run is pinned to a release like the entries.
 
 ## The manifest
 
@@ -240,15 +337,20 @@ without it the library couldn't tell which profiles the pinned release has, or w
 | Name | What it is |
 |---|---|
 | `validate_request(registry, profile, endpoint, body, *, content_type="application/json") -> RequestCheck` | Checks a JSON body (or bytes of one) against the operation's request schema; for other media types, only that the operation accepts the content type. `check.ok`, `check.problems` |
-| `read_result(registry, profile, endpoint, *, status, content_type, body) -> Result` | Applies SPEC.md's "How a gateway reads an answer": the error mappings in order, whatever the status, then the success rule. `success`, `framing`, `value`, `failure`, `error` (a `Classification`) |
+| `read_result(registry, profile, endpoint, *, status, content_type, body, request=…, headers=None) -> Result` | Applies SPEC.md's "How a gateway reads an answer": the error mappings in order, whatever the status, then the success rule. `success`, `framing`, `value`, `failure`, `error` (a `Classification`), and `work`: the work reports found, by measure, added up |
 | `classify(registry, profile, endpoint, *, status, content_type=None, body=b"") -> Classification` | The first mapping that matches, else `internal`: `kind`, `retry`, `mapping` |
-| `ResultReader(operation, *, status, content_type, max_buffer=16 MiB)` | The same, fed chunk by chunk with `feed` as a stream passes through, then `finish()` or `classify()`. It keeps only the last NDJSON line or SSE event (testing `any-line` and `any-event` mappings as each passes) and a bounded JSON or error body |
+| `ResultReader(operation, *, status, content_type, max_buffer=16 MiB, request=…, headers=None)` | The same, fed chunk by chunk with `feed` as a stream passes through, then `finish()` or `classify()`. It keeps only the last NDJSON line or SSE event (testing `any-line` and `any-event` mappings as each passes) and a bounded JSON or error body |
 | `framing_of(content_type, declared=())` | `text/event-stream` is `sse`, `application/x-ndjson` `ndjson`, JSON types `json`, anything else `binary` |
+| `validate_response(registry, profile, endpoint, value, *, status, content_type) -> SchemaCheck \| None` | Checks an answer's decoded body, or one SSE event's data or NDJSON line, against the entry's response schema for that status (else its range, else `default`) and content type; None where the entry declares none |
+| `split_stream(framing, body)` | A whole SSE or NDJSON answer as its events or lines: `(event type, text)` pairs |
+| `Operation.work_reports` | The entry's work reports, as `WorkReport`s: `measure`, `location`, `framing`, `event`, `pointer`, `header`, `aggregate` (`value`, `count`, `sum`, `length`), and `asked(request)` |
 
 Conditions follow the schema: `in` is `body`, `last-line`, `any-line`, `last-event` or `any-event`;
 `event`, `data`, `pointer` with `equals`, `matches` or `present`, and `status`, `framing` and
-`content_type` on mappings. A `*` in a pointer stands for every item of an array; a test passes when
-any value the pointer names passes, and `present: false` when it names none. SSE follows the WHATWG
+`content_type` on mappings. A `*` in a pointer stands for every item of an array or every member of
+an object; a test passes when any value the pointer names passes, and `present: false` when it
+names none. A work report reads the body, a header, the request, or the last or any line or event
+(for any, the last match counts); the request it needs asking for is in `asked`. SSE follows the WHATWG
 parsing rules, so an event the stream never finishes with a blank line doesn't count. `matches`
 patterns run with Python's `re`; an entry whose pattern `re` can't compile is refused on load.
 
@@ -267,7 +369,7 @@ From the repository root, with [uv](https://docs.astral.sh/uv/) and the pins CI 
 RUN="uv run --python 3.12 --no-project --with-requirements .github/scripts/requirements.txt \
   --with-requirements .github/scripts/requirements-dev.txt --with pydantic==2.14.3 \
   --with ./python/runner-registry --with ./python/runner-contract"
-$RUN pytest -q python
+$RUN pytest -q python    # includes CI check 6, tests/test_suites.py
 $RUN ruff check --line-length 120 python && $RUN ruff format --check --line-length 120 python
 $RUN mypy --strict python/runner-contract/src python/runner-contract/tests
 $RUN mypy --strict python/runner-registry/src python/runner-registry/tests python/check_dist.py
@@ -275,7 +377,9 @@ uv build --out-dir dist python/runner-registry && uv build --out-dir dist python
 $RUN python python/check_dist.py dist
 ```
 
-The tests build their own small registry, so they don't depend on the entries in `registry/`.
+The library's tests build their own small registry, so they don't depend on the entries in
+`registry/`; the conformance tests (check 6) read the repository's registry and suites, since they
+check what will ship.
 `python/runner-contract/hatch_build.py` and `python/runner-registry/hatch_build.py` are one file in
 two places (a test keeps them equal); it copies the repository root's files into each build.
 

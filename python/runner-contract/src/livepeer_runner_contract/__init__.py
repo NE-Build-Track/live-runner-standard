@@ -25,6 +25,7 @@ from .envelope import (
 )
 from .ignored import forget_ignored, log_ignored
 from .registry import (
+    Aggregate,
     Attempts,
     Entry,
     EntryKind,
@@ -40,9 +41,10 @@ from .registry import (
     SuccessRule,
     UnknownEndpoint,
     UnknownProfile,
+    WorkReport,
 )
-from .requests import RequestCheck, validate_request
-from .results import Classification, Result, ResultReader, classify, framing_of, read_result
+from .requests import RequestCheck, SchemaCheck, validate_request, validate_response
+from .results import Classification, Result, ResultReader, classify, framing_of, read_result, split_stream
 from .select import (
     ApprovalKey,
     Approvals,
@@ -57,13 +59,14 @@ from .select import (
 )
 from .standard import MAX_METADATA_BYTES, REPOSITORY, RUNNER_CONTRACT, Capability, Mode, capabilities
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "MAX_METADATA_BYTES",
     "REPOSITORY",
     "RUNNER_CONTRACT",
     "Admission",
+    "Aggregate",
     "ApprovalKey",
     "Approvals",
     "Attempts",
@@ -98,10 +101,12 @@ __all__ = [
     "Runner",
     "RunnerKey",
     "Runtime",
+    "SchemaCheck",
     "Selection",
     "SuccessRule",
     "UnknownEndpoint",
     "UnknownProfile",
+    "WorkReport",
     "__version__",
     "canonical_json",
     "capabilities",
@@ -115,5 +120,7 @@ __all__ = [
     "parse_envelope",
     "read_result",
     "select",
+    "split_stream",
     "validate_request",
+    "validate_response",
 ]

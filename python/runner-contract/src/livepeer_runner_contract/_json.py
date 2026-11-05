@@ -53,9 +53,8 @@ def lookup(value: Any, pointer: str) -> Any:
 
 
 def lookup_all(value: Any, pointer: str) -> list[Any]:
-    """Every value ``pointer`` names, where a ``*`` token stands for every item of an array (SPEC.md).
-
-    Without a ``*`` this is ``lookup``, as a list of none or one. On an object, ``*`` is an ordinary key.
+    """Every value ``pointer`` names, where a ``*`` token stands for every item of an array or every
+    member of an object (SPEC.md). Without a ``*`` this is ``lookup``, as a list of none or one.
     """
     if pointer == "":
         return [value]
@@ -67,7 +66,9 @@ def lookup_all(value: Any, pointer: str) -> list[Any]:
         found: list[Any] = []
         for node in nodes:
             if isinstance(node, dict):
-                if key in node:
+                if key == "*":
+                    found.extend(node.values())
+                elif key in node:
                     found.append(node[key])
             elif isinstance(node, list):
                 if key == "*":

@@ -27,6 +27,14 @@ def test_data_matches_the_repository_root() -> None:
         assert (data / rel).read_bytes() == (ROOT / rel).read_bytes(), rel
 
 
+def test_the_conformance_suites_ship_with_the_registry() -> None:
+    data = package.data_dir()
+    suites = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "conformance").rglob("*") if p.is_file())
+    assert "conformance/common/suite.json" in suites
+    for rel in suites:
+        assert (data / rel).read_bytes() == (ROOT / rel).read_bytes(), rel
+
+
 def test_every_indexed_entry_is_present() -> None:
     """The packaged entries are the tree's bytes; whether the index's digests match is CI check 3's job."""
     data = package.data_dir()

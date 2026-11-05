@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from livepeer_runner_contract import Registry, UnknownEndpoint, UnknownProfile, validate_request
+from livepeer_runner_contract import Registry, UnknownEndpoint, UnknownProfile, validate_request, validate_response
 
 CHAT = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
 
@@ -64,3 +66,34 @@ def test_unknown_profiles_and_endpoints_raise(registry: Registry) -> None:
         validate_request(registry, "openai.nothing.v1", "x", {})
     with pytest.raises(UnknownEndpoint):
         validate_request(registry, "openai.chat.v1", "completions", {})
+
+
+def test_answers_check_against_the_entrys_response_schemas() -> None:
+    real = Registry.load(Path(__file__).resolve().parents[3])
+    chat = {
+        "id": "c",
+        "object": "chat.completion",
+        "created": 1,
+        "model": "m",
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+    }
+    check = validate_response(
+        real, "openai.chat.v1", "chat_completions", chat, status=200, content_type="application/json"
+    )
+    assert check is not None and check.ok
+    bad = validate_response(real, "openai.chat.v1", "chat_completions", {}, status=200, content_type="application/json")
+    assert bad is not None and "'id' is a required property" in bad.problems
+    # One SSE event's data: [DONE] isn't JSON, and the event schema allows it.
+    done = validate_response(
+        real, "openai.chat.v1", "chat_completions", "[DONE]", status=200, content_type="text/event-stream"
+    )
+    assert done is not None and done.ok
+    # An error status falls back to the default response.
+    error = {"error": {"message": "no", "type": "BadRequestError"}}
+    assert validate_response(
+        real, "openai.chat.v1", "chat_completions", error, status=400, content_type="application/json"
+    )
+    assert (
+        validate_response(real, "openai.chat.v1", "chat_completions", "x", status=200, content_type="text/html") is None
+    )

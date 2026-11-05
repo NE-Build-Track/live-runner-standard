@@ -351,7 +351,7 @@ rule differs by profile, the entry says how.
 | Concern | Rule |
 |---|---|
 | Readiness | `HealthURL` answers 200 only after a self-test of every advertised profile passes, and 503 with `{"status": "starting"}` or `{"status": "failed"}` otherwise. A runner that loses its model, GPU or upstream vendor returns to 503. A health check that always answers 200 doesn't conform |
-| Headers | Response headers within 1 s, since payment starts when they arrive |
+| Headers | A streamed answer sends its response headers within 1 s, since payment starts when they arrive; a single JSON or binary answer may send them when it is done |
 | Keepalive | A streamed answer sends a line, event or byte at least every 15 s |
 | Success | Exactly as the entry's success rule says; a 200 alone is not success where the entry says otherwise |
 | Errors | In the profile's own format, every one listed in the entry and mapped to a base kind |

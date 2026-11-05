@@ -3,6 +3,33 @@
 The standard's changes, newest first. Registry releases are git tags named by date
 (`2026.11.1`, `2026.11.2`…) and list their entries in the release notes.
 
+## 2026.11.2 and v0.2.0, 5 November 2026
+
+### Conformance
+
+- `conformance/`: the first conformance suites, for `openai.chat.v1`,
+  `openai.responses.stateless.v1`, `anthropic.messages.v1`, `typesafe.systemone.v1` and
+  `openai.embeddings.v1`, and `conformance/common/` with the thresholds of the checks every suite
+  runs. Each suite holds a success case per framing, a declared-error case, limit cases and
+  work-report cases. Suites ship in registry releases and in `livepeer-runner-registry`.
+- `runner-contract conform` (`livepeer-runner-contract` 0.2.0): runs each profile's suite
+  against a running runner on its own host and writes a `conformance-report.v1` report per
+  profile. It checks the envelope and revision, health, streamed headers within 1 s, keepalive, every
+  case's answer, schema, content and work reports, and survival of a closed request.
+- CI check 6, in the `python` job: every suite passes against a reference runner (a small stdlib
+  server per profile, in `python/runner-contract/tests/reference/`), and deliberately broken
+  runners fail it.
+- The library reads work reports (`Result.work`, `Operation.work_reports`, with `count`, `sum`,
+  `length`, header and request reports), checks answers against response schemas
+  (`validate_response`), treats `*` on an object as every member, and takes a registry release's
+  tag from a `registry-<tag>/` directory's name.
+
+### The daily fal import
+
+- `.github/workflows/fal-import.yml` re-imports fal's schemas daily; a changed schema becomes a
+  new major on a `fal-import/<date>` branch with an issue for eliteprox to open the pull request.
+- SPEC.md: only a streamed answer must send its headers within 1 s.
+
 ## 2026.11.1 and v0.1.0, 5 November 2026
 
 ### Runner contract v1
