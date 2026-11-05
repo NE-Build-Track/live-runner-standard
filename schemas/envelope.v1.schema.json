@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/NE-Build-Track/live-runner-standard/schemas/envelope.v1.schema.json",
+  "title": "Runner contract v1 envelope",
+  "description": "The JSON a runner registers in Metadata. Readers ignore keys they don't know, so later v1 envelopes may carry new optional keys. The 1,024-byte limit applies to the Metadata string exactly as registered, so it is checked on the raw string, not by this schema. See SPEC.md.",
+  "type": "object",
+  "required": ["runner_contract", "deployment_revision", "endpoints"],
+  "properties": {
+    "runner_contract": {
+      "const": 1
+    },
+    "deployment_revision": {
+      "$ref": "#/$defs/digest"
+    },
+    "endpoints": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/endpoint_name"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/endpoint"
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["name", "source"],
+      "properties": {
+        "name": {
+          "description": "What requests send as the model",
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "description": "<origin>:<id>, such as hf:Qwen/Qwen3.8-27B-AWQ or fal:ideogram/v4",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*:.+$"
+        },
+        "revision": {
+          "description": "An immutable revision, wherever the source has one",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runner_id": {
+      "description": "The node's runner ID, when the node doesn't report it",
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime": {
+      "description": "True values about the runtime, or absent",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "versions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "encoder": {
+          "type": "string"
+        }
+      }
+    },
+    "limits": {
+      "description": "Only limits the runner enforces, such as context_tokens or max_input_bytes",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "admission": {
+      "description": "candidate (the default) or private. A reader treats any other value as private, so this is any string",
+      "type": "string"
+    },
+    "capacity_group": {
+      "description": "For registrations that share one GPU",
+      "type": "object",
+      "required": ["id", "slots"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "attributes": {
+      "description": "App-specific selection values, passed through uninterpreted",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/attribute_value"
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "profile_id": {
+      "description": "<namespace>.<name>.v<major>",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9]+(-[a-z0-9]+)*)+\\.v[1-9][0-9]*$"
+    },
+    "endpoint_name": {
+      "description": "The operationId of the endpoint's operation in its registry entry",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "endpoint": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/profile_id"
+        },
+        "path": {
+          "description": "Only where it differs from the entry's default",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "method": {
+          "description": "Only where it differs from the entry's default",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "stop": {
+          "description": "Persistent runners: the path that stops a session",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "channels": {
+          "description": "Persistent runners: the channel names in and out",
+          "type": "object",
+          "properties": {
+            "in": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "out": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "idle_timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "drain_timeout_s": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "attribute_value": {
+      "anyOf": [
+        {
+          "type": ["string", "number", "boolean"]
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": ["string", "number", "boolean"]
+          }
+        }
+      ]
+    }
+  }
+}

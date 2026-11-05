@@ -1,0 +1,51 @@
+name: validate
+
+# CI checks 1-5 (README.md, "CI"), plus tests and lint for the scripts that run them.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (${{ matrix.check }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [schemas, immutability, index, names, capabilities]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the immutability check compares against the latest release tag
+      - uses: astral-sh/setup-uv@v5
+      - name: Run the ${{ matrix.check }} check
+        run: >-
+          uv run --python 3.12 --with-requirements .github/scripts/requirements.txt
+          python .github/scripts/registry_ci.py ${{ matrix.check }}
+
+  scripts:
+    name: scripts (tests and lint)
+    runs-on: ubuntu-latest
+    env:
+      RUN: >-
+        uv run --python 3.12 --with-requirements .github/scripts/requirements.txt
+        --with-requirements .github/scripts/requirements-dev.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Test the checks
+        run: $RUN pytest -q .github/scripts/tests
+      - name: Lint
+        run: |
+          $RUN ruff check --line-length 120 .github/scripts
+          $RUN ruff format --check --line-length 120 .github/scripts
+      - name: Type-check
+        run: $RUN mypy --strict --ignore-missing-imports .github/scripts
