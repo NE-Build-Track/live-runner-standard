@@ -1,0 +1,284 @@
+# livepeer-runner-contract
+
+Runner contract v1, the [live runner standard](https://github.com/NE-Build-Track/live-runner-standard),
+for Python: the `runner-contract` builder tool, and the gateway library that reads envelopes and
+registry entries. Version 0.1.0 implements `runner_contract: 1` as [`SPEC.md`](../../SPEC.md) states it.
+
+The library makes no network calls and holds no policy. Approvals, routes and retail rules stay in
+each gateway; the library reads what runners publish and what the registry says.
+
+## Install
+
+Neither package is published to PyPI. Install them from this repository's tags:
+
+```sh
+# the tool and the library
+pip install "livepeer-runner-contract @ git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract"
+
+# a registry release, which a gateway pins (or pass Registry.load a directory instead)
+pip install "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@2026.11.1#subdirectory=python/runner-registry"
+
+# or run the tool without installing it
+uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract" \
+  runner-contract block runner.toml
+```
+
+`runner-contract check` needs a registry release: pass `--registry DIR` (a checkout of this
+repository works), or add the registry package to the same run with
+`uvx --with "livepeer-runner-registry @ git+…@2026.11.1#subdirectory=python/runner-registry" --from … runner-contract check …`.
+
+The library doesn't depend on the registry package, so it never chooses a release for a gateway: a
+gateway pins one itself (SPEC.md, gateway rule 5). There is no extra for it either, since an extra
+could only name the package, and a bare name would resolve against PyPI, where anyone could publish
+it. Python 3.12 or later; the only dependencies are `jsonschema` and `referencing`.
+
+## The tool
+
+| Command | What it does |
+|---|---|
+| `runner-contract init --capability chat --profile openai.chat.v1 [--out runner.toml]` | Writes a starter manifest. With a registry at hand, one `[[endpoints]]` per operation of each profile. Every value to fill is a `TODO`, which the other commands refuse |
+| `runner-contract envelope runner.toml` | Prints the envelope as compact JSON, with `deployment_revision` computed by the SPEC's recipe. Fails over 1,024 bytes |
+| `runner-contract block runner.toml [--format toml\|json]` | Prints the node's static `[[Runners]]` block, or the JSON a runner sends to `POST /runners/heartbeat` |
+| `runner-contract check FILE [--manifest runner.toml] [--registry DIR]` | Checks a `[[Runners]]` block, a registration JSON or a bare envelope: one line per problem, exit 1 if any |
+| `runner-contract draft --openapi FILE [--profile ID]` | Drafts a registry entry from a runner's OpenAPI document (JSON), for a steward to review |
+| `runner-contract draft --pydantic module:Request,module:Response [--profile ID]` | Drafts one from pydantic models (pydantic must be installed alongside) |
+
+Exit status: 0 clean, 1 problems, 2 a usage error (a missing file, no registry). Warnings go to
+standard error and don't fail.
+
+`check` reads the registration fields as livepeer/node reads them (`orchestrator/registry.go`), and
+reports:
+
+- the envelope against the schema; `Metadata` at most 1,024 bytes as registered; `Version` at most 64
+  characters;
+- `App` on the capability list, and `Mode` the capability's mode (a missing `Mode` is `persistent` to
+  the node);
+- each endpoint's profile in the registry release (or an alias of one), a wire profile that serves
+  the App, and the endpoint's name an `operationId` of that entry;
+- `PriceInfo` present: a positive number (a TOML number: the node reads `Price` as a `json.Number`,
+  which a TOML string can't fill), currency `usd`, unit `hour` or `fixed`;
+- for a static block, keys the node doesn't know (it refuses the whole file), and a missing
+  `HealthURL` (without one the node treats the runner as always healthy);
+- with `--manifest`, a `deployment_revision` the manifest doesn't recompute to.
+
+`conform`, which runs a profile's conformance suite, comes in a later release.
+
+## The manifest
+
+`runner.toml` describes one registration. The tool builds the envelope and both registration formats
+from it, so `Metadata` is never written by hand.
+
+```toml
+[runner]
+id = "qwen38-rig2"
+app = "chat"
+mode = "single-shot"
+capacity = 8
+url = "http://vllm:8000"
+health_url = "http://vllm:8000/health"
+version = "vllm-0.32.0-qwen38"
+
+[price]
+amount = 1.00
+currency = "usd"
+unit = "hour"
+
+[model]
+name = "qwen3.8-27b"
+source = "hf:Qwen/Qwen3.8-27B-AWQ"
+revision = "<40-hex commit>"
+
+[[endpoints]]
+name = "chat_completions"
+profile = "openai.chat.v1"
+
+[limits]
+context_tokens = 131072
+
+[revision]
+images = ["vllm/vllm-openai@sha256:<digest>"]
+settings = { max_model_len = 131072 }
+```
+
+`runner-contract block runner.toml` prints:
+
+```toml
+[[Runners]]
+ID = "qwen38-rig2"
+App = "chat"
+Mode = "single-shot"
+Capacity = 8
+RunnerURL = "http://vllm:8000"
+HealthURL = "http://vllm:8000/health"
+HealthCode = 200
+Status = "ready"
+Version = "vllm-0.32.0-qwen38"
+Metadata = '{"runner_contract":1,"deployment_revision":"sha256:…",…}'
+[Runners.PriceInfo]
+Price = 1.00
+Currency = "usd"
+Unit = "hour"
+```
+
+and `--format json` the dynamic registration, with the node's snake_case fields (`runner_id`,
+`app`, `mode`, `capacity`, `runner_url`, `status`, `version`, `metadata`, `price_info`).
+
+Every key:
+
+| Key | Required | Goes to | Rule |
+|---|---|---|---|
+| `[runner] id` | Yes | `ID` / `runner_id` | 1 to 128 ASCII letters, digits, `-` or `_` (the node's rule) |
+| `[runner] app` | Yes | `App` | A capability from the capability list, and nothing else |
+| `[runner] mode` | Yes | `Mode` | `single-shot` or `persistent`: the capability's mode |
+| `[runner] capacity` | Yes | `Capacity` | Requests (or sessions) it truly serves at once, 1 to 10,000 |
+| `[runner] url` | Yes | `RunnerURL` | Absolute http or https |
+| `[runner] health_url` | For a static block | `HealthURL` | Answers 200 only once a self-test of every profile passes. A dynamic runner heartbeats instead |
+| `[runner] version` | No | `Version` | A build label, at most 64 characters, for information only |
+| `[runner] admission` | No | envelope `admission` | `candidate` or `private` |
+| `[price] amount` | Yes | `PriceInfo.Price` | A positive number, in USD |
+| `[price] currency` | Yes | `PriceInfo.Currency` | `usd` |
+| `[price] unit` | Yes | `PriceInfo.Unit` | `hour` (runner time) or `fixed` (per call): how the node charges |
+| `[model] name`, `source`, `revision` | When it serves a model | envelope `model` | `source` is `<origin>:<id>`; `revision` immutable, where the source has one |
+| `[[endpoints]] name`, `profile` | One or more | envelope `endpoints` | `name` is the operationId in the profile's entry |
+| `[[endpoints]] path`, `method` | No | the endpoint | Only where they differ from the entry's defaults |
+| `[[endpoints]] stop`, `channels = { in = […], out = […] }`, `idle_timeout_s`, `drain_timeout_s` | Persistent runners | the endpoint | Session keys; refused on a single-shot runner |
+| `[limits]` | No | envelope `limits` | Name = number, only limits the runner enforces |
+| `[revision] images` | Yes, one or more | the revision | Every image, pinned as `name@sha256:<64 hex>` |
+| `[revision] settings` | No | the revision | The settings that change behavior. Floats warn: other languages print them differently |
+| `[revision] presets` | No | the revision | Encoding profiles or presets offered; they join the wire profiles in the recipe's `profiles` |
+| `[runtime] name`, `image`, `versions`, `encoder` | No | envelope `runtime` | True values only; `image` is a `sha256:` digest |
+| `[capacity_group] id`, `slots` | No | envelope `capacity_group` | For registrations that share one GPU |
+| `[attributes]` | No | envelope `attributes` | Name = string, number, boolean, or a list of them |
+
+`deployment_revision` hashes `images`, the model's `source` and `revision`, the profiles (each
+endpoint's profile once, plus `presets`) and `settings`, by the SPEC's recipe. The URL, capacity,
+price, version and attributes stay out of it, so moving a tunnel or raising capacity keeps approvals.
+The tool never writes `runner_id` into the envelope, since the node reports it in discovery.
+
+## The library
+
+```python
+from livepeer_runner_contract import (
+    Registry,
+    Retry,
+    log_ignored,
+    parse_discovery,
+    read_result,
+    select,
+    validate_request,
+)
+
+registry = Registry.load()  # the installed release; or Registry.load("path/to/release")
+found = parse_discovery(discovery_json)  # one orchestrator's or a discovery service's answer
+for ignored in found.ignored:
+    log_ignored(logger, ignored.key, ignored.reason)
+
+choices = select(
+    found.runners,
+    "chat",
+    model="hf:Qwen/Qwen3.8-27B-AWQ",
+    profile="openai.chat.v1",
+    approvals=my_policy.approved,
+    registry=registry,
+)
+choice = choices[0]
+check = validate_request(registry, choice.profile, choice.name, body)  # before paying
+if check.ok:
+    ...  # call choice.runner.url + choice.path with choice.method, then:
+result = read_result(registry, choice.profile, choice.name, status=200, content_type=ctype, body=answer)
+if not result.success and result.error and result.error.retry is Retry.ELSEWHERE:
+    ...  # the same request may go to another matching runner
+```
+
+### Envelopes
+
+| Name | What it is |
+|---|---|
+| `parse_envelope(raw) -> Envelope \| Ineligible` | Reads a `Metadata` string. Checks the size of the raw string (1,024 bytes of UTF-8), one JSON object with no duplicate keys, `runner_contract: 1`, and the schema. Ignores unknown keys and never raises |
+| `Envelope` | `deployment_revision`, `endpoints` (name to `Endpoint`), `model`, `runner_id`, `runtime`, `limits`, `admission`, `capacity_group`, `attributes`, `size`, and `profiles` |
+| `Endpoint` | `name`, `profile`, `path`, `method`, and the session keys `stop`, `channels`, `idle_timeout_s`, `drain_timeout_s` |
+| `Ineligible` | `reason` (an `IneligibleReason`: `no_metadata`, `too_large`, `not_json`, `not_v1`, `unknown_version`, `invalid`) and `detail`, which quotes only the schema, never the runner's values |
+| `Admission` | `candidate` or `private`; `Admission.read` makes any other value `private` |
+| `envelope_problems(value) -> list[str]` | Every schema problem, one line each |
+| `deployment_revision(images, profiles, settings, model=None) -> str` | The SPEC's recipe, exactly; `canonical_json` is its JSON |
+
+### The registry
+
+| Name | What it is |
+|---|---|
+| `Registry.load(path=None, *, strict=True)` | Loads a release directory (holding `registry/index.json`) or a `registry/` directory; with no path, the installed `livepeer-runner-registry`. Checks each entry's sha256 against the index, that its path follows its ID, and resolves aliases and `extends`. A refused entry raises `RegistryError`, or with `strict=False` is left out and listed in `refused` |
+| `registry.entry(id)`, `get(id)`, `canonical(id)`, `operation(id, endpoint)` | Lookups; every ID may be an alias. `UnknownProfile` and `UnknownEndpoint` are `LookupError`s |
+| `registry.capabilities`, `release`, `refused` | The release's capability list, its tag (from the package), and refused entries |
+| `Entry` | `id`, `kind`, `mode`, `capabilities`, `admission` (the default), `attempts`, `status`, `aliases`, `operations` (after `extends`), `x` (the root `x-livepeer`), `document` |
+| `Operation` | `name`, `method`, `path`, `framings`, `success` (`SuccessRule`: `status`, `final`), `errors` (`ErrorMapping`s), `attempts`, `defined_in`, and the raw `x` and `spec` |
+| `ErrorKind`, `Retry` | The base kinds, and each kind's fixed rule as `kind.retry`: `never`, `elsewhere`, `owner`, `after_fix` |
+
+An entry that `extends` another serves the base's operations, with its own replacing any of the same
+`operationId`, and takes any of the base's root keys it doesn't state (`readiness`, `presets`,
+`cost_hint`…).
+
+### Discovery and selection
+
+| Name | What it is |
+|---|---|
+| `parse_discovery(answer) -> Discovery` | Reads a discovery answer (parsed or text): `runners` (each a `Runner` with its `Envelope`) and `ignored` (each with its `RunnerKey` and `Ineligible`). Never raises |
+| `select(runners, capability, model=None, profile=None, attributes=None, approvals=frozenset(), *, registry, limits=None, approved_only=False) -> list[Selection]` | The matching endpoints, in the order the runners came. See below |
+| `ApprovalKey(orchestrator, runner_id, deployment_revision, profile)` | What an approval names. `approvals` is a set of them, or a function answering for one, so the gateway can reload its policy at will |
+| `Selection` | `runner`, `endpoint`, `profile` (the entry ID), `operation`, `admission`, `approval`, `approved`, and `name`, `path`, `method` to call |
+
+`select` keeps a runner whose App ID is the capability and whose model's `name` or `source` is
+`model`. Of its endpoints it keeps each whose profile is in the registry (directly or by alias), is a
+wire profile serving the capability, has an operation of the endpoint's name, and is `profile` where
+given; whose runner has each wanted attribute value; and whose runner advertises each wanted limit at
+least as high (a limit it doesn't advertise doesn't match). An endpoint is `private` when the envelope
+says so (or says anything unknown) or its entry's default admission is `private`; a private endpoint
+needs an approval, and with `approved_only` every endpoint does. The registry is a required keyword:
+without it the library couldn't tell which profiles the pinned release has, or which are private.
+
+### Requests and answers
+
+| Name | What it is |
+|---|---|
+| `validate_request(registry, profile, endpoint, body, *, content_type="application/json") -> RequestCheck` | Checks a JSON body (or bytes of one) against the operation's request schema; for other media types, only that the operation accepts the content type. `check.ok`, `check.problems` |
+| `read_result(registry, profile, endpoint, *, status, content_type, body) -> Result` | Applies SPEC.md's "How a gateway reads an answer": the error mappings in order, whatever the status, then the success rule. `success`, `framing`, `value`, `failure`, `error` (a `Classification`) |
+| `classify(registry, profile, endpoint, *, status, content_type=None, body=b"") -> Classification` | The first mapping that matches, else `internal`: `kind`, `retry`, `mapping` |
+| `ResultReader(operation, *, status, content_type, max_buffer=16 MiB)` | The same, fed chunk by chunk with `feed` as a stream passes through, then `finish()` or `classify()`. It keeps only the last NDJSON line or SSE event (testing `any-line` and `any-event` mappings as each passes) and a bounded JSON or error body |
+| `framing_of(content_type, declared=())` | `text/event-stream` is `sse`, `application/x-ndjson` `ndjson`, JSON types `json`, anything else `binary` |
+
+Conditions follow the schema: `in` is `body`, `last-line`, `any-line`, `last-event` or `any-event`;
+`event`, `data`, `pointer` with `equals`, `matches` or `present`, and `status`, `framing` and
+`content_type` on mappings. A `*` in a pointer stands for every item of an array; a test passes when
+any value the pointer names passes, and `present: false` when it names none. SSE follows the WHATWG
+parsing rules, so an event the stream never finishes with a blank line doesn't count. `matches`
+patterns run with Python's `re`; an entry whose pattern `re` can't compile is refused on load.
+
+### Logging ignored runners
+
+| Name | What it is |
+|---|---|
+| `log_ignored(logger, runner_key, reason, *, level=WARNING) -> bool` | Logs `ignoring runner <id> at <orchestrator>: <reason>; see https://github.com/NE-Build-Track/live-runner-standard` once per runner, and returns whether it logged. IDs and addresses that aren't plain tokens are quoted, so no runner can forge a log line |
+| `forget_ignored(runner_key=None)` | Forgets one runner, or all, so it is logged again |
+
+## Development
+
+From the repository root, with [uv](https://docs.astral.sh/uv/) and the pins CI uses:
+
+```sh
+RUN="uv run --python 3.12 --no-project --with-requirements .github/scripts/requirements.txt \
+  --with-requirements .github/scripts/requirements-dev.txt --with pydantic==2.14.3 \
+  --with ./python/runner-registry --with ./python/runner-contract"
+$RUN pytest -q python
+$RUN ruff check --line-length 120 python && $RUN ruff format --check --line-length 120 python
+$RUN mypy --strict python/runner-contract/src python/runner-contract/tests
+$RUN mypy --strict python/runner-registry/src python/runner-registry/tests python/check_dist.py
+uv build --out-dir dist python/runner-registry && uv build --out-dir dist python/runner-contract
+$RUN python python/check_dist.py dist
+```
+
+The tests build their own small registry, so they don't depend on the entries in `registry/`.
+`python/runner-contract/hatch_build.py` and `python/runner-registry/hatch_build.py` are one file in
+two places (a test keeps them equal); it copies the repository root's files into each build.
+
+## License
+
+[MIT](../../LICENSE).

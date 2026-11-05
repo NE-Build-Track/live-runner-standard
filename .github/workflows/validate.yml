@@ -49,3 +49,32 @@ jobs:
           $RUN ruff format --check --line-length 120 .github/scripts
       - name: Type-check
         run: $RUN mypy --strict --ignore-missing-imports .github/scripts
+
+  python:
+    name: python (runner-contract and runner-registry)
+    runs-on: ubuntu-latest
+    env:
+      # Both packages installed from this checkout, as built wheels, with the scripts' pins.
+      RUN: >-
+        uv run --python 3.12 --no-project --with-requirements .github/scripts/requirements.txt
+        --with-requirements .github/scripts/requirements-dev.txt --with pydantic==2.14.3
+        --with ./python/runner-registry --with ./python/runner-contract
+      UV_BUILD_CONSTRAINT: python/build-constraints.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Test both packages
+        run: $RUN pytest -q python
+      - name: Lint
+        run: |
+          $RUN ruff check --line-length 120 python
+          $RUN ruff format --check --line-length 120 python
+      - name: Type-check
+        run: |
+          $RUN mypy --strict python/runner-contract/src python/runner-contract/tests
+          $RUN mypy --strict python/runner-registry/src python/runner-registry/tests python/check_dist.py
+      - name: Build both wheels through their sdists, and check the registry and standard files they carry
+        run: |
+          uv build --python 3.12 --out-dir dist python/runner-registry
+          uv build --python 3.12 --out-dir dist python/runner-contract
+          $RUN python python/check_dist.py dist

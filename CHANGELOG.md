@@ -22,4 +22,10 @@ The standard's changes, newest first. Registry releases are git tags named by da
   error mappings that can match any line or event, `present`, `matches` and `content_type`
   conditions, work reports from the request with `count`, `sum` and `length`, `*` pointers,
   `recovery`, and `session.stop`. Two capabilities were added: `text-to-3d` and `audio-to-video`.
+- `python/runner-contract` (`livepeer-runner-contract` 0.1.0): the `runner-contract` tool (`init`,
+  `envelope`, `block`, `check`, `draft`) and the gateway library (`parse_envelope`, `Registry.load`,
+  `parse_discovery`, `select`, `validate_request`, `read_result`, `classify`, `log_ignored`,
+  `deployment_revision`). `python/runner-registry` (`livepeer-runner-registry`) packages the
+  registry, schemas and capability list from the repository root at build. CI job `python` tests,
+  lints, type-checks and builds both.
 - Not yet: `comfystream.*` (eliteprox's own runners' source isn't public) and conformance suites.

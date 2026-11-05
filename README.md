@@ -20,10 +20,12 @@ v1 is a clean break. Gateways ignore runners in any earlier metadata format and 
 | [`registry/`](registry/) | One entry per wire profile, by namespace, and the generated `index.json` |
 | [`CODEOWNERS`](CODEOWNERS) | Each namespace's steward |
 | [`CHANGELOG.md`](CHANGELOG.md) | Changes to the standard |
+| [`python/`](python/) | The `runner-contract` builder tool and the Python gateway library ([`livepeer-runner-contract`](python/runner-contract/README.md)), and the registry as a package ([`livepeer-runner-registry`](python/runner-registry/README.md)) |
+| [`importers/fal/`](importers/fal/) | The importer that generates the `fal.*` endpoint entries from fal's public OpenAPI |
 
-Still to come: the first registry entries and the first registry release (`2026.11.1`); the
-`runner-contract` builder tool and the Python gateway library (`python/`); conformance suites
-(`conformance/`); and the daily fal import (`importers/fal/`).
+Still to come: steward review of the first entries, then the first registry release (`2026.11.1`)
+and `v0.1.0` of the tool and library; `comfystream.*` entries; conformance suites and the
+`conform` command; and the daily fal import workflow.
 
 ## Building a runner
 
@@ -33,22 +35,29 @@ Still to come: the first registry entries and the first registry release (`2026.
    propose an entry in your namespace by pull request (see [Contributing](#contributing)).
 3. **Write its envelope** as [`SPEC.md`](SPEC.md) describes: `runner_contract: 1`, the
    `deployment_revision` from the recipe, one endpoint per profile, and the model it serves. Keep it
-   under 1,024 bytes. Once it ships, `runner-contract envelope` builds it from a short manifest.
+   under 1,024 bytes. `runner-contract envelope` builds it from a short manifest.
 4. **Make it behave** as "How every runner behaves" in [`SPEC.md`](SPEC.md) says: honest readiness,
    errors mapped by its entry, work reports, cancellation within 10 s, and an honest price unit.
-5. **Register it** with `App` set to the capability and `Metadata` set to the envelope. Once it
-   ships, `runner-contract block` prints the node's `[[Runners]]` block and `runner-contract check`
+5. **Register it** with `App` set to the capability and `Metadata` set to the envelope.
+   `runner-contract block` prints the node's `[[Runners]]` block and `runner-contract check`
    validates one.
 
-Until the tool ships, [`schemas/envelope.v1.schema.json`](schemas/envelope.v1.schema.json) validates
-an envelope with any JSON Schema 2020-12 validator.
+The [`runner-contract` tool](python/runner-contract/README.md) installs from this repository's tags
+(until `v0.1.0` is tagged, use `@main`):
+
+```sh
+uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract" \
+  runner-contract init --capability chat --profile openai.chat.v1
+```
 
 ## Building a gateway
 
 A gateway reads only `runner_contract: 1` envelopes, selects runners by capability, model and wire
 profile, takes every behavior from the registry entry, and pins a registry release. "What every
-gateway does, and must not do" in [`SPEC.md`](SPEC.md) lists the rules. The Python gateway library
-that implements the reading and selection is still to come.
+gateway does, and must not do" in [`SPEC.md`](SPEC.md) lists the rules. The Python gateway library,
+[`livepeer-runner-contract`](python/runner-contract/README.md), implements reading envelopes, selection,
+request checks and the answer rules; a gateway pins a registry release by installing
+[`livepeer-runner-registry`](python/runner-registry/README.md) from its tag.
 
 ## Contributing
 
@@ -113,10 +122,11 @@ uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
 
 ## Releases
 
-Once the release workflow lands with the first release, each merge that changes `registry/`,
-`schemas/` or `capabilities.json` becomes a registry release, tagged by date (`2026.11.1`, `2026.11.2`…). A gateway pins one. The builder tool and the gateway
-library will be tagged separately, by semver (`v0.1.0`…). Neither is published to PyPI; both install
-from this repository's tags.
+Each merge that changes `registry/`, `schemas/` or `capabilities.json` becomes a registry release,
+tagged by date (`2026.11.1`, `2026.11.2`…), once the release workflow lands with the first release.
+A gateway pins one. The builder tool and the gateway library are tagged separately, by semver
+(`v0.1.0`…). Neither is published to PyPI; both install from this repository's tags. Nothing is
+tagged yet, so for now both install from `main`.
 
 ## License
 

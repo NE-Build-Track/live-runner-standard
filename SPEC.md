@@ -81,6 +81,9 @@ identity of a deployment is `deployment_revision`.
 An endpoint's `{name}` is the `operationId` of that endpoint's operation in its profile's registry
 entry, and matches `^[a-z][a-z0-9_]*$`.
 
+A runner is `private` when its envelope or its profile's entry says so; an entry's default
+`private` means every runner of that profile needs an approval.
+
 Never in the envelope: prices, URLs, secrets, prose, capacity, approvals, any gateway's trust marks, or
 usage and framing fields (the entry has those).
 
@@ -102,9 +105,9 @@ A two-endpoint chat runner's whole envelope, 381 bytes once the digest and revis
 `deployment_revision` is `sha256:` followed by the lowercase hex SHA-256 of one canonical JSON object
 holding:
 
-- **`images`:** every image's digest, sorted;
+- **`images`:** every image, as its reference pinned by digest (`vllm/vllm-openai@sha256:…`), sorted;
 - **`model`:** the model's `source` and `revision`, when there is a model;
-- **`profiles`:** the wire profiles served, and any encoding profiles or presets, sorted;
+- **`profiles`:** the wire profiles served, each once, and any encoding profiles or presets, sorted;
 - **`settings`:** the settings that change behavior, such as context length, encoder, input-origin
   policy or parsers.
 
@@ -239,7 +242,9 @@ Entries point into requests and answers with JSON pointers (RFC 6901), in which 
 every item of an array or every member of an object: `/data/*/url` names each image's URL. A work
 report reads a number, counts the values a pointer names, sums them, or adds up the lengths of the
 strings it names, and may read the request, such as
-the characters of text to speak. Reports of the same measure add up.
+the characters of text to speak. Reports of the same measure add up. A condition on a `*` pointer, such as
+`equals` or `matches`, holds when any value the pointer names satisfies it, and `present: false`
+holds when it names none.
 
 ### The rules
 

@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "livepeer-runner-contract"
+dynamic = ["version"]
+description = "Runner contract v1, the live runner standard: the Python gateway library and the runner-contract builder tool"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Mike Zupper" }]
+# The registry release is not a dependency: a gateway pins its own (SPEC.md, gateway rule 5) by
+# installing livepeer-runner-registry from a release tag, or passes Registry.load a directory.
+dependencies = ["jsonschema>=4.18", "referencing>=0.28"]
+
+[project.scripts]
+runner-contract = "livepeer_runner_contract.cli:main"
+
+[project.urls]
+Repository = "https://github.com/NE-Build-Track/live-runner-standard"
+
+[tool.hatch.version]
+path = "src/livepeer_runner_contract/__init__.py"
+
+# hatch_build.py copies these from the repository root into the wheel (and into an sdist's _repo/):
+# the standard as of this release, for parse_envelope and the tool when no registry is at hand.
+[tool.hatch.build.hooks.custom.copy]
+"schemas/envelope.v1.schema.json" = "livepeer_runner_contract/data/envelope.v1.schema.json"
+"capabilities.json" = "livepeer_runner_contract/data/capabilities.json"
+"LICENSE" = "livepeer_runner_contract/LICENSE"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/livepeer_runner_contract"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "pyproject.toml", "hatch_build.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "T20", "S", "PT"]
+ignore = ["S101"] # assert is how pytest checks, and how the code states what it has proved
+
+[tool.ruff.lint.per-file-ignores]
+"src/livepeer_runner_contract/cli.py" = ["T201"] # the CLI prints its results
+"tests/**" = ["PT018", "E501"] # compact asserts, and long fixture lines
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# uv caches a built wheel of a local directory by these files; the data comes from the root.
+[tool.uv]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "hatch_build.py" },
+  { file = "src/**/*.py" },
+  { file = "../../schemas/envelope.v1.schema.json" },
+  { file = "../../capabilities.json" },
+  { file = "../../LICENSE" },
+]

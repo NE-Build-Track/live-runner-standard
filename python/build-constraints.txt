@@ -1,0 +1,7 @@
+# The build backend and its dependencies, pinned for CI's builds of python/runner-contract and
+# python/runner-registry (UV_BUILD_CONSTRAINT in .github/workflows/validate.yml).
+hatchling==1.33.0
+packaging==26.3
+pathspec==1.1.1
+pluggy==1.7.0
+trove-classifiers==2026.9.21.13

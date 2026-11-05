@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "livepeer-runner-registry"
+# A registry release's version is its date tag (2026.11.1, 2026.11.2…). This placeholder marks a
+# build from an untagged commit; the release workflow writes the tag's version here in the commit it
+# tags. See README.md ("Versions").
+version = "2026.11.1.dev0"
+description = "A registry release of the live runner standard: its wire-profile entries and index, schemas and capability list"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Mike Zupper" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/NE-Build-Track/live-runner-standard"
+
+# hatch_build.py copies these from the repository root into the wheel (and into an sdist's _repo/).
+[tool.hatch.build.hooks.custom.copy]
+"registry" = "livepeer_runner_registry/data/registry"
+"schemas" = "livepeer_runner_registry/data/schemas"
+"capabilities.json" = "livepeer_runner_registry/data/capabilities.json"
+"LICENSE" = "livepeer_runner_registry/LICENSE"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/livepeer_runner_registry"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "pyproject.toml", "hatch_build.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "T20", "S", "PT"]
+ignore = ["S101"] # assert is how pytest checks
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PT018", "E501"] # compact asserts, and long fixture lines
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# uv caches a built wheel of a local directory by these files; the data comes from the root.
+[tool.uv]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "hatch_build.py" },
+  { file = "src/**/*.py" },
+  { file = "../../registry/**/*.json" },
+  { file = "../../schemas/*.json" },
+  { file = "../../capabilities.json" },
+  { file = "../../LICENSE" },
+]
