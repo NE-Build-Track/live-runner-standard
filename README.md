@@ -24,8 +24,7 @@ v1 is a clean break. Gateways ignore runners in any earlier metadata format and 
 | [`importers/fal/`](importers/fal/) | The importer that generates the `fal.*` endpoint entries from fal's public OpenAPI |
 
 Still to come: steward review of the first entries (a change to a released entry is a new major);
-`comfystream.*` entries; conformance suites and the `conform` command; and the daily fal import
-workflow.
+`comfystream.*` entries; and conformance suites and the `conform` command.
 
 ## Building a runner
 
@@ -81,6 +80,11 @@ reviewer's rule.
 
 A new namespace is a pull request that adds its directory and its `CODEOWNERS` line, approved by
 NE-SPE. A namespace's deprecations and aliases go in its `registry/<namespace>/namespace.json`.
+
+New majors of `fal.*` entries come from [the daily fal import](.github/workflows/fal-import.yml). GitHub
+Actions can't open pull requests here, so it pushes a `fal-import/<date>` branch and opens an issue
+for eliteprox with the link that opens the pull request
+([`importers/fal/`](importers/fal/README.md#the-daily-workflow)).
 
 **What a reviewer checks in an entry:**
 

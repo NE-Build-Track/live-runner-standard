@@ -621,31 +621,38 @@ def majors(name: str) -> dict[int, Path]:
 
 def plan(
     base: dict[str, Any], endpoint: dict[str, Any], fal: dict[str, Any], rewrite: bool
-) -> tuple[str, Path | None, bytes]:
-    """What to do for one endpoint: (outcome, path to write or None, bytes)."""
+) -> tuple[str, Path | None, bytes, dict[str, str] | None]:
+    """What to do for one endpoint: (outcome, path to write or None, bytes, the entry it supersedes)."""
     name = entry_name(endpoint["endpoint_id"])
     existing = majors(name)
     if not existing:
-        return "new", REGISTRY / f"{name}.v1.json", render(build(base, endpoint, fal, 1))
+        return "new", REGISTRY / f"{name}.v1.json", render(build(base, endpoint, fal, 1)), None
     latest = max(existing)
     current = existing[latest].read_bytes()
     try:
         recorded = json.loads(current)["info"]["x-source"]["sha256"]
     except (ValueError, KeyError, TypeError):
         raise NotImported(f"{existing[latest].name} has no info.x-source.sha256; fix it by hand") from None
+    previous = {"profile": f"fal.{name}.v{latest}", "sha256": recorded}
     if recorded != fal_digest(fal):
         major = latest + 1
         return (
             f"fal schema changed: new major v{major}",
             REGISTRY / f"{name}.v{major}.json",
             render(build(base, endpoint, fal, major)),
+            previous,
         )
     rendered = render(build(base, endpoint, fal, latest))
     if rendered == current:
-        return "unchanged", None, rendered
+        return "unchanged", None, rendered, None
     if rewrite:
-        return f"rewritten (same fal schema) v{latest}", existing[latest], rendered
-    return f"differs from v{latest} with the same fal schema; left as is (--rewrite before a release)", None, rendered
+        return f"rewritten (same fal schema) v{latest}", existing[latest], rendered, previous
+    return (
+        f"differs from v{latest} with the same fal schema; left as is (--rewrite before a release)",
+        None,
+        rendered,
+        None,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -665,6 +672,9 @@ def main(argv: list[str] | None = None) -> int:
         help="rewrite an entry whose fal schema is unchanged but whose bytes differ (only before a release)",
     )
     parser.add_argument("--endpoint", action="append", default=[], help="import only this endpoint ID (repeatable)")
+    parser.add_argument(
+        "--report", type=Path, help="write a JSON record of the entries written (or, with --check, due)"
+    )
     args = parser.parse_args(argv)
 
     listing = json.loads(ENDPOINTS.read_text(encoding="utf-8"))
@@ -683,6 +693,7 @@ def main(argv: list[str] | None = None) -> int:
 
     names: dict[str, str] = {}
     pending = False
+    written: list[dict[str, Any]] = []
     for endpoint in endpoints:
         endpoint_id = endpoint["endpoint_id"]
         name = entry_name(endpoint_id)
@@ -701,12 +712,21 @@ def main(argv: list[str] | None = None) -> int:
             if not source.is_file():
                 raise NotImported(f"not in the cache ({source}); run with --fetch")
             fal = extract(json.loads(source.read_bytes()), endpoint_id)
-            outcome, target, data = plan(base, endpoint, fal, args.rewrite)
+            outcome, target, data, previous = plan(base, endpoint, fal, args.rewrite)
         except (NotImported, ValueError) as exc:
             failures[endpoint_id] = str(exc)
             continue
         if target is not None:
             pending = True
+            written.append(
+                {
+                    "endpoint_id": endpoint_id,
+                    "profile": f"fal.{target.name.removesuffix('.json')}",
+                    "path": target.relative_to(ROOT).as_posix(),
+                    "sha256": fal_digest(fal),
+                    "replaces": previous,
+                }
+            )
             if not args.check:
                 target.write_bytes(data)
         elif not outcome.startswith("unchanged"):
@@ -715,6 +735,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for endpoint_id, reason in sorted(failures.items()):
         print(f"{endpoint_id}: NOT IMPORTED: {reason}", file=sys.stderr)
+    if args.report:
+        report = {"fal_import_report": 1, "entries": written, "not_imported": sorted(failures)}
+        args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return 1 if failures or (args.check and pending) else 0
 
 

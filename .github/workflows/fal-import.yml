@@ -1,0 +1,141 @@
+name: fal-import
+
+# The daily fal import (importers/fal/README.md, "The daily workflow"). It fetches fal's public
+# OpenAPI for every endpoint in importers/fal/endpoints.json, and where a fal schema changed it pushes
+# the next major of that entry to a branch fal-import/<UTC date>. Actions may not open pull requests
+# in this organization, so it runs validate on the branch and opens an issue for the fal steward with
+# the link that opens the pull request. Released entries are never rewritten.
+on:
+  schedule:
+    - cron: "23 5 * * *" # daily, 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the fal-import/<date> branch
+  issues: write # open or update the review issue, and create its label
+  actions: write # dispatch validate.yml on the branch
+
+concurrency:
+  group: fal-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUN: uv run --python 3.12 --with-requirements .github/scripts/requirements.txt python -I
+      GH_TOKEN: ${{ github.token }}
+      REVIEWER: eliteprox # the fal.* steward in CODEOWNERS
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0 # release tags for the immutability check, and earlier fal-import branches
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Import from fal
+        id: import
+        run: |
+          status=0
+          $RUN importers/fal/import_fal.py --fetch --cache "$RUNNER_TEMP/fal-openapi" \
+            --report "$RUNNER_TEMP/fal-import.json" || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          # Released entries never change: the import may only add entries under registry/fal/.
+          unexpected=$(git status --porcelain --untracked-files=all \
+            | grep -Ev '^\?\? registry/fal/[a-z0-9-]+\.v[1-9][0-9]*\.json$' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::The import changed files it may not change:"
+            echo "$unexpected"
+            exit 1
+          fi
+          if [ -z "$(git status --porcelain --untracked-files=all)" ]; then
+            echo "No fal schema changed; nothing to propose."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Look for the same entries on an earlier fal-import branch
+        id: earlier
+        if: steps.import.outputs.changed == 'true'
+        run: |
+          git fetch -q origin '+refs/heads/fal-import/*:refs/remotes/origin/fal-import/*'
+          $RUN importers/fal/report.py paths "$RUNNER_TEMP/fal-import.json" > "$RUNNER_TEMP/paths.txt"
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/fal-import/); do
+            same=true
+            while read -r path; do
+              if [ "$(git rev-parse -q --verify "$ref:$path" || true)" != "$(git hash-object "$path")" ]; then
+                same=false
+                break
+              fi
+            done < "$RUNNER_TEMP/paths.txt"
+            if [ "$same" = true ]; then
+              echo "These entries are already proposed on ${ref#origin/}; not pushing them again."
+              echo "branch=${ref#origin/}" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+
+      - name: Regenerate the index and run the registry checks
+        if: steps.import.outputs.changed == 'true' && steps.earlier.outputs.branch == ''
+        run: |
+          $RUN .github/scripts/registry_ci.py index --write
+          $RUN .github/scripts/registry_ci.py all
+
+      - name: Commit and push the branch
+        id: push
+        if: steps.import.outputs.changed == 'true' && steps.earlier.outputs.branch == ''
+        run: |
+          branch="fal-import/$(date -u +%F)"
+          if git ls-remote --exit-code --heads origin "refs/heads/$branch" > /dev/null; then
+            branch="$branch-$GITHUB_RUN_NUMBER"
+          fi
+          $RUN importers/fal/report.py commit "$RUNNER_TEMP/fal-import.json" > "$RUNNER_TEMP/message.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -q -c "$branch"
+          git add -- registry/fal registry/index.json
+          git commit -q -F "$RUNNER_TEMP/message.txt"
+          git push -q origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Run validate on the branch
+        if: steps.push.outputs.branch != ''
+        env:
+          BRANCH: ${{ steps.push.outputs.branch }}
+        run: gh workflow run validate.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+      - name: Open or update the review issue
+        if: steps.push.outputs.branch != '' || steps.earlier.outputs.branch != ''
+        env:
+          BRANCH: ${{ steps.push.outputs.branch || steps.earlier.outputs.branch }}
+        run: |
+          if ! gh label list --repo "$GITHUB_REPOSITORY" --limit 500 --json name --jq '.[].name' | grep -qx fal-import; then
+            gh label create fal-import --repo "$GITHUB_REPOSITORY" --color 1D76DB \
+              --description "A fal schema changed: new fal.* entries to review"
+          fi
+          $RUN importers/fal/report.py issue "$RUNNER_TEMP/fal-import.json" --branch "$BRANCH" \
+            --repository "$GITHUB_REPOSITORY" --server "$GITHUB_SERVER_URL" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$RUNNER_TEMP/issue.md"
+          title="fal import: new entries on $BRANCH"
+          found=$(gh issue list --repo "$GITHUB_REPOSITORY" --label fal-import --state all --limit 500 \
+            --json number,state,title \
+            | jq -r --arg t "$title" 'map(select(.title == $t)) | first | if . then "\(.number) \(.state)" else "" end')
+          case "$found" in
+            "")
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$RUNNER_TEMP/issue.md" \
+                --label fal-import --assignee "$REVIEWER" ;;
+            *" OPEN")
+              gh issue edit "${found%% *}" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/issue.md" \
+                --add-assignee "$REVIEWER" ;;
+            *)
+              echo "Issue #${found%% *} for $BRANCH is closed; leaving it closed." ;;
+          esac
+
+      - name: Fail if an endpoint wasn't imported
+        if: steps.import.outputs.status != '0'
+        run: |
+          echo "::error::Some endpoints weren't imported; the import step's log says which and why."
+          exit 1

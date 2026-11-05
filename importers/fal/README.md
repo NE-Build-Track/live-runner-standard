@@ -3,7 +3,8 @@
 Generates one registry entry per fal endpoint, `registry/fal/<name>.v<major>.json`, from fal's public
 queue OpenAPI. Every entry extends [`fal.queue.v1`](../../registry/fal/queue.v1.json), which describes
 how the Livepeer fal route adapter behaves for every endpoint. Each endpoint entry adds that endpoint's
-own request and output schemas. Run it by hand for now; a daily workflow will run it later.
+own request and output schemas. [A daily workflow](#the-daily-workflow) runs it and proposes any new
+majors; it also runs by hand.
 
 ## Running it
 
@@ -15,6 +16,7 @@ RUN="uv run --python 3.12 --with-requirements .github/scripts/requirements.txt p
 $RUN importers/fal/import_fal.py --fetch    # fetch fal's OpenAPI for every endpoint, then generate
 $RUN importers/fal/import_fal.py            # generate again from the cache, offline
 $RUN importers/fal/import_fal.py --check    # write nothing; exit 1 if any entry would be written
+$RUN importers/fal/import_fal.py --report r.json   # also record what was written, as JSON
 
 # after any entry is written, regenerate the index
 uv run --python 3.12 --with-requirements .github/scripts/requirements.txt \
@@ -29,6 +31,39 @@ and isn't regenerated from an older cached copy. `--endpoint <ID>` limits a run 
 
 The importer is deterministic: the same endpoint list and the same fal documents give byte-identical
 entries, whatever order fal writes its keys in.
+
+`--report` records each entry written (its ID, path, endpoint ID, fal schema digest, and the entry and
+digest it follows) and the endpoints not imported. [`report.py`](report.py) turns that record into the
+workflow's commit message and issue, and refuses any value that isn't an ID, a path or a digest.
+
+## The daily workflow
+
+[`.github/workflows/fal-import.yml`](../../.github/workflows/fal-import.yml) runs every day at 05:23 UTC,
+and by hand from the Actions tab (`workflow_dispatch`). From `main`, it:
+
+1. runs the importer with `--fetch`, with the CI scripts' pinned requirements. If no fal schema
+   changed, it stops there. It fails if the import changed anything but new files under
+   `registry/fal/`, since released entries never change;
+2. if an earlier `fal-import/*` branch already holds the same new entries byte for byte, skips to
+   step 6 for that branch, so a rerun pushes nothing new;
+3. regenerates `registry/index.json` and runs checks 1-5;
+4. commits as `github-actions[bot]`, with no attribution lines, to `fal-import/<UTC date>` (or
+   `fal-import/<UTC date>-<run number>` if that branch already exists), and pushes it;
+5. dispatches [`validate`](../../.github/workflows/validate.yml) on the branch, whose checks attach to
+   its commit;
+6. opens an issue labelled `fal-import` (creating the label if needed) and assigned to eliteprox,
+   listing each new entry with its fal endpoint ID and old and new fal schema digests, with the link
+   that opens the pull request. An open issue for the same branch is updated instead, and a closed
+   one is left closed.
+
+The organization doesn't let GitHub Actions open pull requests, so someone other than eliteprox opens
+it from the issue's link: he approves it as code owner, and GitHub doesn't let an author approve their
+own pull request. The merge makes a registry release. A run still fails, after proposing what it
+could, when any endpoint wasn't imported; its log says which and why.
+
+When a branch's entries are superseded (a later run proposes them again with more changes, on a new
+branch), close the older issue and delete its branch. To have a closed proposal made again, delete
+its branch.
 
 ## What it reads
 
