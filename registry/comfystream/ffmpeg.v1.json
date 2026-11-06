@@ -1,0 +1,959 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "comfystream.ffmpeg.v1",
+    "version": "1",
+    "description": "Native ComfyStream HTTP contract. Local candidate; execution conformance must be verified separately."
+  },
+  "paths": {
+    "/batch/scale-video": {
+      "post": {
+        "operationId": "scale_video",
+        "summary": "Native FFmpeg scale-video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "height": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "default": "pad",
+                    "enum": [
+                      "pad",
+                      "crop",
+                      "stretch"
+                    ],
+                    "type": "string"
+                  },
+                  "video_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "width": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "video_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/trim-video": {
+      "post": {
+        "operationId": "trim_video",
+        "summary": "Native FFmpeg trim-video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "duration": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "end_time": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "start_time": {
+                    "default": 0,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "video_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "video_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/loudnorm": {
+      "post": {
+        "operationId": "loudnorm",
+        "summary": "Native FFmpeg loudnorm",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "audio_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "integrated_loudness": {
+                    "default": -18,
+                    "type": "number"
+                  },
+                  "volume": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "audio_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/extract-frame": {
+      "post": {
+        "operationId": "extract_frame",
+        "summary": "Native FFmpeg extract-frame",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "frame_type": {
+                    "default": "first",
+                    "enum": [
+                      "first",
+                      "last"
+                    ],
+                    "type": "string"
+                  },
+                  "video_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "video_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/metadata": {
+      "post": {
+        "operationId": "metadata",
+        "summary": "Native FFmpeg metadata",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "media_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "media_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/merge-audio-video": {
+      "post": {
+        "operationId": "merge_audio_video",
+        "summary": "Native FFmpeg merge-audio-video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "audio_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "video_url": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "video_url",
+                  "audio_url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/merge-videos": {
+      "post": {
+        "operationId": "merge_videos",
+        "summary": "Native FFmpeg merge-videos",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "video_urls": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 2,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "video_urls"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/images-to-video": {
+      "post": {
+        "operationId": "images_to_video",
+        "summary": "Native FFmpeg images-to-video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "fps": {
+                    "default": 4,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "images": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "frames": {
+                              "default": 1,
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "url": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "url"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "images"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/batch/compose": {
+      "post": {
+        "operationId": "compose",
+        "summary": "Native FFmpeg compose",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "fps": {
+                    "default": 4,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "tracks": {
+                    "items": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "keyframes": {
+                          "items": {
+                            "additionalProperties": true,
+                            "properties": {
+                              "duration": {
+                                "description": "Length of this keyframe in milliseconds.",
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              "timestamp": {
+                                "minimum": 0,
+                                "type": "number"
+                              },
+                              "url": {
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "url"
+                            ],
+                            "type": "object"
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "video",
+                            "audio",
+                            "image"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "keyframes"
+                      ],
+                      "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "tracks"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    },
+    "/publish": {
+      "post": {
+        "operationId": "publish",
+        "summary": "Native FFmpeg publish",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "request_id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "stamps": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "request_id",
+                  "stamps"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result: metadata or media receipt; publication uses caller-supplied stamps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error object with error.message and error.status"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "busy"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "comfystream.ffmpeg.v1",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "media-tools"
+    ],
+    "admission": {
+      "default": "private",
+      "reason": "Local profile pending independent conformance and registry review"
+    },
+    "attempts": "caller"
+  }
+}
