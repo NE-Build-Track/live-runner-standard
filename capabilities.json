@@ -1,26 +1,137 @@
 {
   "capability_list": 1,
   "capabilities": [
-    {"name": "chat", "group": "text", "mode": "single-shot", "summary": "Reply to a conversation of messages"},
-    {"name": "embeddings", "group": "text", "mode": "single-shot", "summary": "Turn text into vectors for search and similarity"},
-    {"name": "translation", "group": "text", "mode": "single-shot", "summary": "Translate text or speech into another language"},
-    {"name": "decision", "group": "text", "mode": "single-shot", "summary": "Answer a typed question with probabilities instead of generated text"},
-    {"name": "text-to-image", "group": "images", "mode": "single-shot", "summary": "Generate images from a text prompt"},
-    {"name": "image-edit", "group": "images", "mode": "single-shot", "summary": "Change an image, such as inpainting, upscaling or removing a background"},
-    {"name": "image-to-3d", "group": "images", "mode": "single-shot", "summary": "Build a 3D mesh from an image"},
-    {"name": "text-to-3d", "group": "images", "mode": "single-shot", "summary": "Build a 3D mesh from a text prompt"},
-    {"name": "text-to-video", "group": "video", "mode": "single-shot", "summary": "Generate a video from a text prompt"},
-    {"name": "image-to-video", "group": "video", "mode": "single-shot", "summary": "Generate a video that starts from an image"},
-    {"name": "audio-to-video", "group": "video", "mode": "single-shot", "summary": "Generate a video driven by audio, such as speech or music"},
-    {"name": "video-to-video", "group": "video", "mode": "single-shot", "summary": "Transform a video into another video"},
-    {"name": "video-transcode", "group": "video", "mode": "single-shot", "summary": "Encode a video into other formats or renditions, such as an HLS ladder"},
-    {"name": "text-to-speech", "group": "audio", "mode": "single-shot", "summary": "Speak text aloud"},
-    {"name": "transcription", "group": "audio", "mode": "single-shot", "summary": "Turn speech into text"},
-    {"name": "music", "group": "audio", "mode": "single-shot", "summary": "Generate music"},
-    {"name": "sound-effects", "group": "audio", "mode": "single-shot", "summary": "Generate sound effects"},
-    {"name": "media-tools", "group": "media", "mode": "single-shot", "summary": "Process media files, such as merging, trimming or extracting frames"},
-    {"name": "live-video-to-video", "group": "live", "mode": "persistent", "summary": "Transform a live video stream in a session"},
-    {"name": "live-transcode", "group": "live", "mode": "persistent", "summary": "Encode a live video stream into renditions in a session"},
-    {"name": "live-transcription", "group": "live", "mode": "persistent", "summary": "Turn live speech into text in a session"}
+    {
+      "name": "chat",
+      "group": "text",
+      "mode": "single-shot",
+      "summary": "Reply to a conversation of messages"
+    },
+    {
+      "name": "embeddings",
+      "group": "text",
+      "mode": "single-shot",
+      "summary": "Turn text into vectors for search and similarity"
+    },
+    {
+      "name": "translation",
+      "group": "text",
+      "mode": "single-shot",
+      "summary": "Translate text or speech into another language"
+    },
+    {
+      "name": "decision",
+      "group": "text",
+      "mode": "single-shot",
+      "summary": "Answer a typed question with probabilities instead of generated text"
+    },
+    {
+      "name": "text-to-image",
+      "group": "images",
+      "mode": "single-shot",
+      "summary": "Generate images from a text prompt"
+    },
+    {
+      "name": "image-edit",
+      "group": "images",
+      "mode": "single-shot",
+      "summary": "Change an image, such as inpainting, upscaling or removing a background"
+    },
+    {
+      "name": "image-to-3d",
+      "group": "images",
+      "mode": "single-shot",
+      "summary": "Build a 3D mesh from an image"
+    },
+    {
+      "name": "text-to-3d",
+      "group": "images",
+      "mode": "single-shot",
+      "summary": "Build a 3D mesh from a text prompt"
+    },
+    {
+      "name": "text-to-video",
+      "group": "video",
+      "mode": "single-shot",
+      "summary": "Generate a video from a text prompt"
+    },
+    {
+      "name": "image-to-video",
+      "group": "video",
+      "mode": "single-shot",
+      "summary": "Generate a video that starts from an image"
+    },
+    {
+      "name": "audio-to-video",
+      "group": "video",
+      "mode": "single-shot",
+      "summary": "Generate a video driven by audio, such as speech or music"
+    },
+    {
+      "name": "video-to-video",
+      "group": "video",
+      "mode": "single-shot",
+      "summary": "Transform a video into another video"
+    },
+    {
+      "name": "video-transcode",
+      "group": "video",
+      "mode": "single-shot",
+      "summary": "Encode a video into other formats or renditions, such as an HLS ladder"
+    },
+    {
+      "name": "text-to-speech",
+      "group": "audio",
+      "mode": "single-shot",
+      "summary": "Speak text aloud"
+    },
+    {
+      "name": "transcription",
+      "group": "audio",
+      "mode": "single-shot",
+      "summary": "Turn speech into text"
+    },
+    {
+      "name": "music",
+      "group": "audio",
+      "mode": "single-shot",
+      "summary": "Generate music"
+    },
+    {
+      "name": "sound-effects",
+      "group": "audio",
+      "mode": "single-shot",
+      "summary": "Generate sound effects"
+    },
+    {
+      "name": "media-tools",
+      "group": "media",
+      "mode": "single-shot",
+      "summary": "Process media files, such as merging, trimming or extracting frames"
+    },
+    {
+      "name": "live-video-to-video",
+      "group": "live",
+      "mode": "persistent",
+      "summary": "Transform a live video stream in a session"
+    },
+    {
+      "name": "live-transcode",
+      "group": "live",
+      "mode": "persistent",
+      "summary": "Encode a live video stream into renditions in a session"
+    },
+    {
+      "name": "live-transcription",
+      "group": "live",
+      "mode": "persistent",
+      "summary": "Turn live speech into text in a session"
+    },
+    {
+      "name": "live-media-publish",
+      "group": "live",
+      "mode": "persistent",
+      "summary": "Publish caller-stamped live media to Swarm"
+    }
   ]
 }

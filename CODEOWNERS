@@ -32,3 +32,5 @@
 # eliteprox, provisional until he reviews the namespace name.
 /registry/comfystream/      @eliteprox
 /conformance/comfystream/   @eliteprox
+
+/registry/comfystream/ @eliteprox
