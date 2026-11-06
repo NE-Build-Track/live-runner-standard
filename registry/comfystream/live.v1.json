@@ -673,8 +673,7 @@
       "live-video-to-video"
     ],
     "admission": {
-      "default": "private",
-      "reason": "Local profile pending independent conformance and registry review"
+      "default": "candidate"
     },
     "attempts": "caller"
   }
