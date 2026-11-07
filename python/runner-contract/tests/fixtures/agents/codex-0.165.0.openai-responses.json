@@ -1,0 +1,509 @@
+{
+ "model": "m",
+ "stream": true,
+ "input": [
+  {
+   "type": "message",
+   "id": "msg_00000000-0000-0000-0000-000000000000",
+   "role": "developer",
+   "content": [
+    {
+     "type": "input_text",
+     "text": "(text elided)"
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "id": "msg_00000000-0000-0000-0000-000000000000",
+   "role": "developer",
+   "content": [
+    {
+     "type": "input_text",
+     "text": "(text elided)"
+    },
+    {
+     "type": "input_text",
+     "text": "(text elided)"
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "id": "msg_00000000-0000-0000-0000-000000000000",
+   "role": "user",
+   "content": [
+    {
+     "type": "input_text",
+     "text": "(text elided)"
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "id": "msg_00000000-0000-0000-0000-000000000000",
+   "role": "user",
+   "content": [
+    {
+     "type": "input_text",
+     "text": "Say hello."
+    }
+   ]
+  }
+ ],
+ "tools": [
+  {
+   "type": "function",
+   "name": "exec_command",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "cmd": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "justification": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "login": {
+      "type": "boolean",
+      "description": "(text elided)"
+     },
+     "max_output_tokens": {
+      "type": "number",
+      "description": "(text elided)"
+     },
+     "prefix_rule": {
+      "type": "array",
+      "description": "(text elided)",
+      "items": {
+       "type": "string"
+      }
+     },
+     "sandbox_permissions": {
+      "type": "string",
+      "description": "(text elided)",
+      "enum": [
+       "use_default",
+       "require_escalated"
+      ]
+     },
+     "shell": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "tty": {
+      "type": "boolean",
+      "description": "(text elided)"
+     },
+     "workdir": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "yield_time_ms": {
+      "type": "number",
+      "description": "(text elided)"
+     }
+    },
+    "required": [
+     "cmd"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "function",
+   "name": "write_stdin",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "chars": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "max_output_tokens": {
+      "type": "number",
+      "description": "(text elided)"
+     },
+     "session_id": {
+      "type": "number",
+      "description": "(text elided)"
+     },
+     "yield_time_ms": {
+      "type": "number",
+      "description": "(text elided)"
+     }
+    },
+    "required": [
+     "session_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "function",
+   "name": "request_user_input",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "questions": {
+      "type": "array",
+      "description": "(text elided)",
+      "items": {
+       "type": "object",
+       "properties": {
+        "header": {
+         "type": "string",
+         "description": "(text elided)"
+        },
+        "id": {
+         "type": "string",
+         "description": "(text elided)"
+        },
+        "options": {
+         "type": "array",
+         "description": "(text elided)",
+         "items": {
+          "type": "object",
+          "properties": {
+           "description": {
+            "type": "string",
+            "description": "(text elided)"
+           },
+           "label": {
+            "type": "string",
+            "description": "(text elided)"
+           }
+          },
+          "required": [
+           "label",
+           "description"
+          ],
+          "additionalProperties": false
+         }
+        },
+        "question": {
+         "type": "string",
+         "description": "(text elided)"
+        }
+       },
+       "required": [
+        "id",
+        "header",
+        "question",
+        "options"
+       ],
+       "additionalProperties": false
+      }
+     }
+    },
+    "required": [
+     "questions"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "function",
+   "name": "view_image",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "description": "(text elided)"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "namespace",
+   "name": "multi_agent_v1",
+   "description": "(text elided)",
+   "tools": [
+    {
+     "type": "function",
+     "name": "close_agent",
+     "description": "(text elided)",
+     "strict": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "target": {
+        "type": "string",
+        "description": "(text elided)"
+       }
+      },
+      "required": [
+       "target"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "type": "function",
+     "name": "resume_agent",
+     "description": "(text elided)",
+     "strict": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string",
+        "description": "(text elided)"
+       }
+      },
+      "required": [
+       "id"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "type": "function",
+     "name": "send_input",
+     "description": "(text elided)",
+     "strict": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "interrupt": {
+        "type": "boolean",
+        "description": "(text elided)"
+       },
+       "items": {
+        "type": "array",
+        "description": "(text elided)",
+        "items": {
+         "type": "object",
+         "properties": {
+          "audio_url": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "image_url": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "name": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "path": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "text": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "type": {
+           "type": "string",
+           "description": "(text elided)"
+          }
+         },
+         "additionalProperties": false
+        }
+       },
+       "message": {
+        "type": "string",
+        "description": "(text elided)"
+       },
+       "target": {
+        "type": "string",
+        "description": "(text elided)"
+       }
+      },
+      "required": [
+       "target"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "type": "function",
+     "name": "spawn_agent",
+     "description": "(text elided)",
+     "strict": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "fork_context": {
+        "type": "boolean",
+        "description": "(text elided)"
+       },
+       "items": {
+        "type": "array",
+        "description": "(text elided)",
+        "items": {
+         "type": "object",
+         "properties": {
+          "audio_url": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "image_url": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "name": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "path": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "text": {
+           "type": "string",
+           "description": "(text elided)"
+          },
+          "type": {
+           "type": "string",
+           "description": "(text elided)"
+          }
+         },
+         "additionalProperties": false
+        }
+       },
+       "message": {
+        "type": "string",
+        "description": "(text elided)"
+       },
+       "model": {
+        "type": "string",
+        "description": "(text elided)"
+       },
+       "reasoning_effort": {
+        "type": "string",
+        "description": "(text elided)"
+       }
+      },
+      "additionalProperties": false
+     }
+    },
+    {
+     "type": "function",
+     "name": "wait_agent",
+     "description": "(text elided)",
+     "strict": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "targets": {
+        "type": "array",
+        "description": "(text elided)",
+        "items": {
+         "type": "string"
+        }
+       },
+       "timeout_ms": {
+        "type": "number",
+        "description": "(text elided)"
+       }
+      },
+      "required": [
+       "targets"
+      ],
+      "additionalProperties": false
+     }
+    }
+   ]
+  },
+  {
+   "type": "function",
+   "name": "get_goal",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "function",
+   "name": "create_goal",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "objective": {
+      "type": "string",
+      "description": "(text elided)"
+     },
+     "token_budget": {
+      "type": "integer",
+      "description": "(text elided)"
+     }
+    },
+    "required": [
+     "objective"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "function",
+   "name": "update_goal",
+   "description": "(text elided)",
+   "strict": false,
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "description": "(text elided)",
+      "enum": [
+       "complete",
+       "blocked",
+       "paused"
+      ]
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "type": "web_search",
+   "external_web_access": false
+  }
+ ],
+ "tool_choice": "auto",
+ "parallel_tool_calls": true,
+ "reasoning": {
+  "summary": "auto"
+ },
+ "store": false,
+ "include": [
+  "reasoning.encrypted_content"
+ ],
+ "prompt_cache_key": "00000000-0000-0000-0000-000000000000",
+ "client_metadata": {
+  "x-codex-window-id": "00000000-0000-0000-0000-000000000000:0",
+  "x-codex-installation-id": "00000000-0000-0000-0000-000000000000",
+  "root_turn_id": "00000000-0000-0000-0000-000000000000",
+  "thread_id": "00000000-0000-0000-0000-000000000000",
+  "turn_id": "00000000-0000-0000-0000-000000000000",
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-0000-0000-000000000000\",\"session_id\":\"00000000-0000-0000-0000-000000000000\",\"thread_id\":\"00000000-0000-0000-0000-000000000000\",\"agent_name\":\"/root\",\"turn_id\":\"00000000-0000-0000-0000-000000000000\",\"window_id\":\"00000000-0000-0000-0000-000000000000:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-0000-0000-000000000000\",\"request_kind\":\"turn\",\"history_initialization\":\"new\",\"root_turn_id\":\"00000000-0000-0000-0000-000000000000\",\"thread_source\":\"user\",\"turn_trigger\":\"exec\",\"sandbox\":\"seccomp\",\"sandbox_mode\":\"read-only\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":false,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1794056081435,\"analytics_enabled\":true,\"model\":\"m\"}"
+ }
+}

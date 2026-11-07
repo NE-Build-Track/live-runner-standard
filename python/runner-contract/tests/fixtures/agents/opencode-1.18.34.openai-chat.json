@@ -1,0 +1,329 @@
+{
+ "model": "m",
+ "max_tokens": 4096,
+ "messages": [
+  {
+   "role": "system",
+   "content": "(text elided)"
+  },
+  {
+   "role": "user",
+   "content": "\"Say hello.\""
+  }
+ ],
+ "tools": [
+  {
+   "type": "function",
+   "function": {
+    "name": "bash",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "command": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "timeout": {
+       "minimum": -9007199254740991,
+       "exclusiveMinimum": 0,
+       "type": "integer",
+       "maximum": 9007199254740991,
+       "description": "(text elided)"
+      },
+      "workdir": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "command"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "edit",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "filePath": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "oldString": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "newString": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "replaceAll": {
+       "type": "boolean",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "filePath",
+      "oldString",
+      "newString"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "glob",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "pattern": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "path": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "pattern"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "grep",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "pattern": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "path": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "include": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "pattern"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "read",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "filePath": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "offset": {
+       "minimum": 0,
+       "type": "integer",
+       "maximum": 9007199254740991,
+       "description": "(text elided)"
+      },
+      "limit": {
+       "minimum": 0,
+       "type": "integer",
+       "maximum": 9007199254740991,
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "filePath"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "skill",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "name"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "task",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "description": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "prompt": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "subagent_type": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "task_id": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "command": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "description",
+      "prompt",
+      "subagent_type"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "todowrite",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "todos": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "content": {
+          "type": "string",
+          "description": "(text elided)"
+         },
+         "status": {
+          "type": "string",
+          "description": "(text elided)"
+         },
+         "priority": {
+          "type": "string",
+          "description": "(text elided)"
+         }
+        },
+        "required": [
+         "content",
+         "status",
+         "priority"
+        ]
+       },
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "todos"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "webfetch",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "url": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "format": {
+       "type": "string",
+       "enum": [
+        "text",
+        "markdown",
+        "html"
+       ],
+       "description": "(text elided)",
+       "default": "markdown"
+      },
+      "timeout": {
+       "type": "number",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "url"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "write",
+    "description": "(text elided)",
+    "parameters": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "content": {
+       "type": "string",
+       "description": "(text elided)"
+      },
+      "filePath": {
+       "type": "string",
+       "description": "(text elided)"
+      }
+     },
+     "required": [
+      "content",
+      "filePath"
+     ]
+    }
+   }
+  }
+ ],
+ "tool_choice": "auto",
+ "stream": true,
+ "stream_options": {
+  "include_usage": true
+ }
+}

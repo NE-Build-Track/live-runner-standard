@@ -1,0 +1,22 @@
+{
+ "model": "m",
+ "max_tokens": 4096,
+ "messages": [
+  {
+   "role": "system",
+   "content": "(text elided)"
+  },
+  {
+   "role": "user",
+   "content": "(text elided)"
+  },
+  {
+   "role": "user",
+   "content": "\"Say hello.\""
+  }
+ ],
+ "stream": true,
+ "stream_options": {
+  "include_usage": true
+ }
+}

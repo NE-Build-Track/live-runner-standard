@@ -1,0 +1,493 @@
+{
+ "model": "m",
+ "messages": [
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "text",
+     "text": "(text elided)"
+    },
+    {
+     "type": "text",
+     "text": "Say hello."
+    }
+   ]
+  },
+  {
+   "role": "system",
+   "content": [
+    {
+     "type": "text",
+     "text": "(text elided)",
+     "cache_control": {
+      "type": "ephemeral"
+     }
+    }
+   ]
+  }
+ ],
+ "system": [
+  {
+   "type": "text",
+   "text": "(text elided)"
+  },
+  {
+   "type": "text",
+   "text": "(text elided)",
+   "cache_control": {
+    "type": "ephemeral"
+   }
+  },
+  {
+   "type": "text",
+   "text": "(text elided)",
+   "cache_control": {
+    "type": "ephemeral"
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "Agent",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "description": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "prompt": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "subagent_type": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "model": {
+      "description": "(text elided)",
+      "type": "string",
+      "enum": [
+       "sonnet",
+       "opus",
+       "haiku",
+       "fable"
+      ]
+     },
+     "effort": {
+      "description": "(text elided)",
+      "type": "string",
+      "enum": [
+       "low",
+       "medium",
+       "high",
+       "xhigh",
+       "max"
+      ]
+     },
+     "run_in_background": {
+      "description": "(text elided)",
+      "type": "boolean"
+     },
+     "isolation": {
+      "description": "(text elided)",
+      "type": "string",
+      "enum": [
+       "worktree",
+       "remote"
+      ]
+     }
+    },
+    "required": [
+     "description",
+     "prompt"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "Bash",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "command": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "timeout": {
+      "description": "(text elided)",
+      "type": "number"
+     },
+     "description": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "run_in_background": {
+      "description": "(text elided)",
+      "type": "boolean"
+     },
+     "dangerouslyDisableSandbox": {
+      "description": "(text elided)",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "command"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "Edit",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "file_path": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "old_string": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "new_string": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "replace_all": {
+      "description": "(text elided)",
+      "default": false,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "file_path",
+     "old_string",
+     "new_string"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "ListAgents",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "channel": {
+      "description": "(text elided)",
+      "type": "string",
+      "maxLength": 256
+     },
+     "q": {
+      "description": "(text elided)",
+      "type": "string",
+      "maxLength": 256
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "Read",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "file_path": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "offset": {
+      "description": "(text elided)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+     },
+     "limit": {
+      "description": "(text elided)",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+     },
+     "pages": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "allow_large": {
+      "description": "(text elided)",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "file_path"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "ReportFindings",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "level": {
+      "description": "(text elided)",
+      "type": "string",
+      "enum": [
+       "low",
+       "medium",
+       "high",
+       "xhigh",
+       "max"
+      ]
+     },
+     "findings": {
+      "description": "(text elided)",
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "file": {
+         "description": "(text elided)",
+         "type": "string"
+        },
+        "line": {
+         "description": "(text elided)",
+         "type": "integer",
+         "minimum": -9007199254740991,
+         "maximum": 9007199254740991
+        },
+        "summary": {
+         "description": "(text elided)",
+         "type": "string"
+        },
+        "short_summary": {
+         "description": "(text elided)",
+         "type": "string",
+         "maxLength": 60
+        },
+        "failure_scenario": {
+         "description": "(text elided)",
+         "type": "string"
+        },
+        "category": {
+         "description": "(text elided)",
+         "type": "string",
+         "maxLength": 40
+        },
+        "verdict": {
+         "description": "(text elided)",
+         "type": "string",
+         "enum": [
+          "CONFIRMED",
+          "PLAUSIBLE"
+         ]
+        },
+        "outcome": {
+         "description": "(text elided)",
+         "type": "string",
+         "enum": [
+          "fixed",
+          "skipped",
+          "no_change_needed"
+         ]
+        }
+       },
+       "required": [
+        "file",
+        "summary",
+        "failure_scenario"
+       ],
+       "additionalProperties": false
+      }
+     }
+    },
+    "required": [
+     "findings"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "ScheduleWakeup",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "delaySeconds": {
+      "description": "(text elided)",
+      "type": "number"
+     },
+     "reason": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "prompt": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "stop": {
+      "description": "(text elided)",
+      "type": "boolean"
+     },
+     "noop": {
+      "description": "(text elided)",
+      "type": "boolean"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "Skill",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "skill": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "args": {
+      "description": "(text elided)",
+      "type": "string"
+     }
+    },
+    "required": [
+     "skill"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "ToolSearch",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "query": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "max_results": {
+      "description": "(text elided)",
+      "default": 5,
+      "type": "number"
+     }
+    },
+    "required": [
+     "query",
+     "max_results"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "Workflow",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "script": {
+      "description": "(text elided)",
+      "type": "string",
+      "maxLength": 524288
+     },
+     "name": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "description": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "title": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "args": {
+      "description": "(text elided)"
+     },
+     "scriptPath": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "resumeFromRunId": {
+      "description": "(text elided)",
+      "type": "string",
+      "pattern": "^wf_[a-z0-9-]{6,}$"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "DeferredToolPlaceholder",
+   "description": "(text elided)",
+   "input_schema": {
+    "type": "object",
+    "properties": {}
+   },
+   "defer_loading": true
+  },
+  {
+   "name": "Write",
+   "description": "(text elided)",
+   "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "file_path": {
+      "description": "(text elided)",
+      "type": "string"
+     },
+     "content": {
+      "description": "(text elided)",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_path",
+     "content"
+    ],
+    "additionalProperties": false
+   }
+  }
+ ],
+ "metadata": {
+  "user_id": "{\"device_id\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"account_uuid\":\"\",\"session_id\":\"00000000-0000-0000-0000-000000000000\"}"
+ },
+ "max_tokens": 32000,
+ "thinking": {
+  "type": "adaptive",
+  "display": "omitted"
+ },
+ "context_management": {
+  "edits": [
+   {
+    "type": "clear_thinking_20251015",
+    "keep": "all"
+   }
+  ]
+ },
+ "output_config": {
+  "effort": "high"
+ },
+ "stream": true
+}
