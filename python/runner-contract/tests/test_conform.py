@@ -155,7 +155,9 @@ def test_conform_writes_one_report_per_profile(
     for profile in TEXT:
         report = read(tmp_path / f"report.{profile}.json")
         assert report["pass"] and report["profile"] == profile and report["runner_id"] == "reference-runner"
-        assert report["suite"] == {"id": profile, "version": "1+common.1"}
+        namespace, name = profile.split(".", 1)
+        suite = json.loads((ROOT / "conformance" / namespace / name / "suite.json").read_text())
+        assert report["suite"] == {"id": profile, "version": f"{suite['version']}+common.1"}
         assert report["tool"]["name"] == "runner-contract" and "registry_release" not in report
         assert f"{profile}: pass" in err
 
@@ -192,7 +194,8 @@ def test_conform_from_an_envelope_with_overrides(
     manifest.write_text(manifest_for(TEXT, "http://runner.invalid:9", registry))
     assert main(["envelope", str(manifest)]) == 0
     envelope = tmp_path / "envelope.json"
-    envelope.write_text(capsys.readouterr().out)
+    without_id = {k: v for k, v in json.loads(capsys.readouterr().out).items() if k != "runner_id"}
+    envelope.write_text(json.dumps(without_id, separators=(",", ":")))
     argv = ["--envelope", str(envelope), "--url", text_runner.url, "--health-url", text_runner.health_url]
     status, err = run(capsys, *argv, "--profile", "anthropic.messages.v1", "--out", str(tmp_path / "r.json"))
     assert status == 2 and "no runner ID" in err
@@ -263,3 +266,83 @@ def test_a_release_directory_names_the_release(
     assert status == 0, capsys.readouterr().err
     assert read(tmp_path / "r.json")["registry_release"] == "2026.11.7"
     assert Registry.load(release / "registry").release == "2026.11.7"
+
+
+SIGNED = "X-Amz-Signature=deadbeef"  # what a minted URL carries, and a report must not
+
+
+def _release_with_fixture_cases(root: Path) -> Registry:
+    """The repository's release, with the chat suite's JSON case reading its prompt from a fixture and
+    fetching a fixture URL after the answer, as a transcode case would read back its outputs."""
+    for part in ("registry", "schemas", "conformance"):
+        shutil.copytree(ROOT / part, root / part)
+    shutil.copy(ROOT / "capabilities.json", root / "capabilities.json")
+    path = root / "conformance/openai/chat.v1/suite.json"
+    suite = json.loads(path.read_text())
+    case = next(c for c in suite["cases"] if c["id"] == "chat_completions.json")
+    case["request"]["messages"][0]["content"] = "$fixture.prompt"
+    case["fetch"] = ["$fixture.output_url"]
+    path.write_text(json.dumps(suite))
+    return Registry.load(root)
+
+
+def _conform_with(
+    tmp_path: Path, runner: ReferenceRunner, fixtures: dict[str, Any] | None, capsys: pytest.CaptureFixture[str]
+) -> tuple[int, dict[str, Any]]:
+    release = tmp_path / "release"
+    registry = _release_with_fixture_cases(release)
+    manifest = tmp_path / "runner.toml"
+    manifest.write_text(manifest_for(["openai.chat.v1"], runner.url, registry))
+    argv = ["--manifest", str(manifest), "--registry", str(release), "--out", str(tmp_path / "r.json")]
+    if fixtures is not None:
+        (tmp_path / "fixtures.json").write_text(json.dumps(fixtures))
+        argv += ["--fixtures", str(tmp_path / "fixtures.json")]
+    status, _ = run(capsys, *argv)
+    return status, read(tmp_path / "r.json")
+
+
+def test_fixtures_fill_requests_and_name_what_to_fetch_back(
+    tmp_path: Path, registry: Registry, text_runner: ReferenceRunner, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fixtures = {"prompt": "Reply with one short sentence.", "output_url": f"{text_runner.health_url}?{SIGNED}"}
+    status, report = _conform_with(tmp_path, text_runner, fixtures, capsys)
+    results = {c["id"]: c for c in report["checks"]}
+    assert status == 0, [(c["id"], c.get("detail")) for c in report["checks"] if c["result"] == "fail"]
+    assert results["chat_completions.json.fetch"]["result"] == "pass"
+    assert SIGNED not in json.dumps(report)
+
+
+def test_a_missing_fixture_fails_its_case(
+    tmp_path: Path, registry: Registry, text_runner: ReferenceRunner, capsys: pytest.CaptureFixture[str]
+) -> None:
+    status, report = _conform_with(tmp_path, text_runner, None, capsys)
+    result = {c["id"]: c for c in report["checks"]}["chat_completions.json"]
+    assert status == 1 and result["result"] == "fail" and "prompt, output_url" in result["detail"]
+
+
+def test_an_output_that_isnt_there_fails_the_fetch_without_naming_its_url(
+    tmp_path: Path, registry: Registry, text_runner: ReferenceRunner, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fixtures = {"prompt": "Hi", "output_url": f"{text_runner.url}/missing?{SIGNED}"}
+    status, report = _conform_with(tmp_path, text_runner, fixtures, capsys)
+    result = {c["id"]: c for c in report["checks"]}["chat_completions.json.fetch"]
+    assert status == 1 and result["result"] == "fail" and "output_url answered 404" in result["detail"]
+    assert SIGNED not in json.dumps(report)
+
+
+def test_a_fixture_that_breaks_the_schema_is_reported_by_path_alone(
+    tmp_path: Path, registry: Registry, text_runner: ReferenceRunner, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fixtures = {"prompt": {"policy": SIGNED}, "output_url": text_runner.health_url}
+    status, report = _conform_with(tmp_path, text_runner, fixtures, capsys)
+    result = {c["id"]: c for c in report["checks"]}["chat_completions.json.request"]
+    assert status == 1 and result["result"] == "fail" and "/messages/0/content" in result["detail"]
+    assert SIGNED not in json.dumps(report)
+
+
+@pytest.mark.parametrize("fetch", [["https://example.com/out"], "$fixture.x", ["$fixture.Bad-Name"]])
+def test_fetch_must_list_fixtures(tmp_path: Path, fetch: Any) -> None:
+    suite = copy.deepcopy(ECHO_SUITE)
+    suite["cases"][0]["fetch"] = fetch
+    with pytest.raises(SuiteError):
+        load_suite(release_with_suite(tmp_path, suite), "zio.echo.v1")

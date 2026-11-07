@@ -1,15 +1,16 @@
 {
   "conformance_suite": 1,
   "profile": "anthropic.messages.v1",
-  "version": "1",
+  "version": "2",
   "cancel": "messages.sse",
   "cases": [
     {
       "id": "messages.json",
       "endpoint": "messages",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
       "request": {
         "model": "$model",
-        "max_tokens": 16,
+        "max_tokens": 512,
         "messages": [
           {
             "role": "user",
@@ -31,9 +32,10 @@
     {
       "id": "messages.sse",
       "endpoint": "messages",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
       "request": {
         "model": "$model",
-        "max_tokens": 16,
+        "max_tokens": 512,
         "messages": [
           {
             "role": "user",
@@ -52,6 +54,33 @@
         }
       ],
       "work_reports": true
+    },
+    {
+      "id": "messages.reasoning_off",
+      "endpoint": "messages",
+      "note": "Runs only for a runner whose envelope declares reasoning.default off: with no room to think, it must still answer",
+      "when": {
+        "/reasoning/default": "off"
+      },
+      "request": {
+        "model": "$model",
+        "max_tokens": 16,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Reply with one short sentence."
+          }
+        ]
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/content/*/text"
+        }
+      ]
     },
     {
       "id": "messages.invalid",

@@ -17,6 +17,7 @@ from .envelope import (
     Ineligible,
     IneligibleReason,
     Model,
+    Reasoning,
     Runtime,
     canonical_json,
     deployment_revision,
@@ -43,7 +44,7 @@ from .registry import (
     UnknownProfile,
     WorkReport,
 )
-from .requests import RequestCheck, SchemaCheck, validate_request, validate_response
+from .requests import RequestCheck, SchemaCheck, schema_problems, validate_request, validate_response
 from .results import Classification, Result, ResultReader, classify, framing_of, read_result, split_stream
 from .select import (
     ApprovalKey,
@@ -59,7 +60,7 @@ from .select import (
 )
 from .standard import MAX_METADATA_BYTES, REPOSITORY, RUNNER_CONTRACT, Capability, Mode, capabilities
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "MAX_METADATA_BYTES",
@@ -92,6 +93,7 @@ __all__ = [
     "Model",
     "Operation",
     "Price",
+    "Reasoning",
     "Registry",
     "RegistryError",
     "RequestCheck",
@@ -119,6 +121,7 @@ __all__ = [
     "parse_discovery",
     "parse_envelope",
     "read_result",
+    "schema_problems",
     "select",
     "split_stream",
     "validate_request",

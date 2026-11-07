@@ -11,7 +11,16 @@ from collections.abc import Callable, Container, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .envelope import Admission, AttributeValue, Endpoint, Envelope, Ineligible, IneligibleReason, parse_envelope
+from .envelope import (
+    Admission,
+    AttributeValue,
+    Endpoint,
+    Envelope,
+    Ineligible,
+    IneligibleReason,
+    Reasoning,
+    parse_envelope,
+)
 from .registry import EntryKind, Operation, Registry
 
 __all__ = [
@@ -225,6 +234,8 @@ def select(
     registry: Registry,
     limits: Mapping[str, int | float] | None = None,
     approved_only: bool = False,
+    reasoning: Reasoning | str | None = None,
+    model_revision: str | None = None,
 ) -> list[Selection]:
     """The endpoints that match, one ``Selection`` each, in the order the runners came.
 
@@ -237,6 +248,8 @@ def select(
     - each of ``attributes`` is among the runner's values for that attribute;
     - each of ``limits`` is at most the runner's advertised limit (a runner that advertises no such
       limit doesn't match);
+    - its ``reasoning.default`` is ``reasoning``, where given (a runner that declares none doesn't match);
+    - its model's ``revision`` is ``model_revision``, where given;
     - it is approved, where the endpoint is ``private`` (by the envelope, or by the entry's default
       admission), or wherever ``approved_only`` is set. Approvals key on orchestrator, runner,
       ``deployment_revision`` and the profile's entry ID.
@@ -255,6 +268,10 @@ def select(
         if model is not None and (envelope.model is None or model not in (envelope.model.name, envelope.model.source)):
             continue
         if not all(_attribute_matches(envelope.attributes.get(k), v) for k, v in wanted_attributes.items()):
+            continue
+        if reasoning is not None and envelope.reasoning != reasoning:
+            continue
+        if model_revision is not None and (envelope.model is None or envelope.model.revision != model_revision):
             continue
         if limits and not all(
             isinstance(envelope.limits.get(k), int | float) and envelope.limits[k] >= v for k, v in limits.items()

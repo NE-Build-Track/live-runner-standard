@@ -198,3 +198,15 @@ def test_load_without_a_path_or_the_package_says_how_to_install_it(monkeypatch: 
     monkeypatch.setattr(importlib, "import_module", missing)
     with pytest.raises(RegistryError, match=r"subdirectory=python/runner-registry"):
         Registry.load()
+
+
+@pytest.mark.parametrize("where", ["error", "final"])
+def test_a_condition_key_this_reader_doesnt_know_refuses_the_entry(
+    tmp_path: Path, entries: dict[str, dict[str, Any]], where: str
+) -> None:
+    """A later schema may add a condition key; an older reader refuses the entry rather than read it loosely."""
+    op = entries["openai/chat.v1.json"]["paths"]["/v1/chat/completions"]["post"]["x-livepeer"]
+    condition = op["errors"][0] if where == "error" else op["success"]["final"][0]
+    condition["unless"] = "anything"
+    write_release(tmp_path, entries)
+    assert "unless" in Registry.load(tmp_path, strict=False).refused["openai.chat.v1"]

@@ -324,6 +324,11 @@
                 "$ref": "#/$defs/pointer"
               },
               "equals": {},
+              "matches": {
+                "description": "A regular expression (ECMA-262) the value at pointer, as a string, must match, such as ^(completed|incomplete)$ where either status is success",
+                "type": "string",
+                "minLength": 1
+              },
               "present": {
                 "description": "true: the pointer must name a value; false: it must not",
                 "type": "boolean"
@@ -344,6 +349,12 @@
                 "required": [
                   "pointer",
                   "equals"
+                ]
+              },
+              {
+                "required": [
+                  "pointer",
+                  "matches"
                 ]
               },
               {

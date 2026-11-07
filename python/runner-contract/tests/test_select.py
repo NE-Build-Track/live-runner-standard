@@ -13,6 +13,7 @@ from livepeer_runner_contract import (
     ApprovalKey,
     Envelope,
     IneligibleReason,
+    Reasoning,
     Registry,
     Runner,
     RunnerKey,
@@ -196,3 +197,24 @@ def test_an_alias_in_the_envelope_is_resolved(registry: Registry) -> None:
     r = runner(endpoints={"chat_completions": {"profile": "openai.chatcompletions.v1"}})
     (chosen,) = select([r], "chat", profile="openai.chat.v1", registry=registry)
     assert chosen.profile == "openai.chat.v1" and chosen.approval.profile == "openai.chat.v1"
+
+
+def test_select_by_declared_reasoning(registry: Registry) -> None:
+    thinks, answers, says_nothing = (
+        runner("on", reasoning={"default": "on"}),
+        runner("off", reasoning={"default": "off"}),
+        runner("none"),
+    )
+    runners = [thinks, answers, says_nothing]
+    assert [s.runner.runner_id for s in select(runners, "chat", reasoning="off", registry=registry)] == ["off"]
+    assert [s.runner.runner_id for s in select(runners, "chat", reasoning=Reasoning.ON, registry=registry)] == ["on"]
+    assert len(select(runners, "chat", registry=registry)) == 3
+
+
+def test_select_by_model_revision(registry: Registry) -> None:
+    pinned = runner("pinned")  # the fixture's model revision is "a" * 40
+    other = runner("other", model={"name": "qwen3.8-27b", "source": "hf:Qwen/Qwen3.8-27B-AWQ", "revision": "b" * 40})
+    picked = select(
+        [pinned, other], "chat", model="hf:Qwen/Qwen3.8-27B-AWQ", model_revision="a" * 40, registry=registry
+    )
+    assert [s.runner.runner_id for s in picked] == ["pinned"]

@@ -1,0 +1,192 @@
+{
+  "conformance_suite": 1,
+  "profile": "openai.responses.stateless.v2",
+  "version": "1",
+  "cancel": "responses.sse",
+  "cases": [
+    {
+      "id": "responses.json",
+      "endpoint": "responses",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
+      "request": {
+        "model": "$model",
+        "input": "Reply with one short sentence.",
+        "store": false,
+        "max_output_tokens": 512
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/output/*/content/*",
+          "where": {
+            "/type": "output_text"
+          },
+          "value": "/text"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "responses.sse",
+      "endpoint": "responses",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
+      "request": {
+        "model": "$model",
+        "input": "Reply with one short sentence.",
+        "store": false,
+        "max_output_tokens": 512,
+        "stream": true
+      },
+      "expect": {
+        "framing": "sse"
+      },
+      "content": [
+        {
+          "in": "any-event",
+          "pointer": "",
+          "where": {
+            "/type": "response.output_text.delta"
+          },
+          "value": "/delta"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "responses.reasoning_off",
+      "endpoint": "responses",
+      "note": "Runs only for a runner whose envelope declares reasoning.default off: with no room to think, it must still answer",
+      "when": {
+        "/reasoning/default": "off"
+      },
+      "request": {
+        "model": "$model",
+        "input": "Reply with one short sentence.",
+        "store": false,
+        "max_output_tokens": 16
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/output/*/content/*",
+          "where": {
+            "/type": "output_text"
+          },
+          "value": "/text"
+        }
+      ]
+    },
+    {
+      "id": "responses.capped.json",
+      "endpoint": "responses",
+      "note": "An answer max_output_tokens cuts short is incomplete, and still success: it carries usage, and content isn't required",
+      "request": {
+        "model": "$model",
+        "input": "Count from 1 to 200, with the numbers separated by spaces.",
+        "store": false,
+        "max_output_tokens": 16
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "work_reports": true
+    },
+    {
+      "id": "responses.capped.sse",
+      "endpoint": "responses",
+      "note": "An answer max_output_tokens cuts short is incomplete, and still success: it carries usage, and content isn't required",
+      "request": {
+        "model": "$model",
+        "input": "Count from 1 to 200, with the numbers separated by spaces.",
+        "store": false,
+        "max_output_tokens": 16,
+        "stream": true
+      },
+      "expect": {
+        "framing": "sse"
+      },
+      "work_reports": true
+    },
+    {
+      "id": "responses.invalid",
+      "endpoint": "responses",
+      "note": "No input: the request schema requires it",
+      "request": {
+        "model": "$model",
+        "store": false,
+        "max_output_tokens": 16
+      },
+      "valid": false,
+      "expect": {
+        "kinds": [
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "responses.context_tokens",
+      "endpoint": "responses",
+      "note": "A prompt past the runner's advertised limits.context_tokens is refused with a declared error",
+      "limit": {
+        "name": "context_tokens"
+      },
+      "request": {
+        "model": "$model",
+        "input": "$fill",
+        "store": false,
+        "max_output_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported"
+        ]
+      }
+    },
+    {
+      "id": "responses.inline_cap",
+      "endpoint": "responses",
+      "note": "An inline input past the entry's max_bytes for /input is refused with a declared error",
+      "limit": {
+        "input": "/input"
+      },
+      "request": {
+        "model": "$model",
+        "input": "$fill",
+        "store": false,
+        "max_output_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    },
+    {
+      "id": "responses.max_input_bytes",
+      "endpoint": "responses",
+      "note": "A body past the runner's advertised limits.max_input_bytes is refused with a declared error",
+      "limit": {
+        "name": "max_input_bytes"
+      },
+      "request": {
+        "model": "$model",
+        "input": "$fill",
+        "store": false,
+        "max_output_tokens": 1
+      },
+      "expect": {
+        "kinds": [
+          "input_unsupported",
+          "input_invalid"
+        ]
+      }
+    }
+  ]
+}

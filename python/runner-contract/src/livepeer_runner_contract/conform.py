@@ -12,6 +12,7 @@ Every check is black-box: the tool sees only what the runner answers.
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -26,24 +27,27 @@ from referencing import Registry as SchemaRegistry
 from referencing import Resource
 from referencing.jsonschema import DRAFT202012
 
-from ._json import lookup_all
+from ._json import json_equal, lookup_all
 from .envelope import Endpoint, Envelope, Ineligible, _parse
 from .manifest import Manifest, revision_of
 from .registry import EntryKind, ErrorKind, Framing, Location, Operation, Registry
-from .requests import validate_request, validate_response
+from .requests import schema_problems, validate_request, validate_response
 from .results import Result, ResultReader, split_stream
 from .standard import MAX_METADATA_BYTES, PROFILE_ID, conformance_report_validator
 
 __all__ = [
+    "GROUPS",
     "Case",
     "Check",
     "Common",
+    "Content",
     "Options",
     "Report",
     "Suite",
     "SuiteError",
     "Target",
     "available_suites",
+    "group_of",
     "load_common",
     "load_suite",
     "profiles_to_run",
@@ -53,7 +57,22 @@ __all__ = [
 SUITE_FILE = "suite.json"
 TOOL = "runner-contract"
 STREAMS = (Framing.SSE, Framing.NDJSON)
-_CASE_KEYS = ("id", "endpoint", "request", "valid", "expect", "content", "work_reports", "limit", "note")
+_CASE_KEYS = (
+    "id",
+    "endpoint",
+    "request",
+    "valid",
+    "expect",
+    "content",
+    "work_reports",
+    "limit",
+    "when",
+    "fetch",
+    "note",
+)
+FIXTURE = "$fixture."
+"""A request string ``"$fixture.<name>"`` becomes the value the builder supplies under that name."""
+_FIXTURE_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 _ENVELOPE_LIMITS = ("context_tokens", "max_input_bytes")
 _CONTENT_LOCATIONS = (Location.BODY, Location.LAST_LINE, Location.ANY_LINE, Location.LAST_EVENT, Location.ANY_EVENT)
 _DETAIL_MAX = 2000
@@ -76,6 +95,35 @@ class Limit:
 
 
 @dataclass(frozen=True)
+class Content:
+    """Where a success case's answer must carry non-empty content.
+
+    ``pointer`` names candidates in a unit (the body, a line or an event); ``where`` keeps those whose
+    relative pointers name the given values, such as ``{"/type": "output_text"}``; and ``value`` is the
+    relative pointer to the content within each, the candidate itself when empty. ``where`` is how a
+    suite tells an answer's text from reasoning that arrives in the same shape.
+    """
+
+    location: Location
+    pointer: str
+    where: tuple[tuple[str, Any], ...] = ()
+    value: str = ""
+
+    def describe(self) -> str:
+        filters = "".join(f" where {k} = {json.dumps(v)}" for k, v in self.where)
+        at = f" at {self.value}" if self.value else ""
+        return f"{self.location.value} {self.pointer or '(the whole unit)'}{filters}{at}"
+
+    def found(self, unit: Any) -> bool:
+        """Whether the unit carries non-empty content here."""
+        for candidate in lookup_all(unit, self.pointer):
+            kept = all(any(json_equal(v, want) for v in lookup_all(candidate, at)) for at, want in self.where)
+            if kept and any(_nonempty(v) for v in lookup_all(candidate, self.value)):
+                return True
+        return False
+
+
+@dataclass(frozen=True)
 class Case:
     """One golden request and what its answer must be.
 
@@ -89,9 +137,15 @@ class Case:
     framing: Framing | None = None
     kinds: tuple[ErrorKind, ...] = ()
     valid: bool = True
-    content: tuple[tuple[Location, str], ...] = ()
+    content: tuple[Content, ...] = ()
     work_reports: bool = False
     limit: Limit | None = None
+    when: tuple[tuple[str, Any], ...] = ()
+    """Envelope pointers and values: the case runs only for a runner whose envelope declares each one."""
+    fixtures: tuple[str, ...] = ()
+    """The fixture names the request and ``fetch`` use, which the builder supplies."""
+    fetch: tuple[str, ...] = ()
+    """Fixture names of URLs that must answer 2xx with a body once the answer succeeds, such as outputs."""
 
 
 @dataclass(frozen=True)
@@ -138,6 +192,8 @@ class Options:
     health_timeout: float = 10.0
     cancel_settle_s: float | None = None
     """Seconds to wait after abandoning a request before probing; None takes the common suite's."""
+    fixtures: Mapping[str, Any] = field(default_factory=dict)
+    """Values the builder minted for this run, by name: input URLs, digests, storage grants. Never reported."""
 
 
 @dataclass(frozen=True)
@@ -160,6 +216,34 @@ class Report:
     @property
     def checks(self) -> list[Check]:
         return [Check(c["id"], c["result"], c.get("detail", "")) for c in self.document["checks"]]
+
+    @property
+    def groups(self) -> dict[str, str]:
+        """Each group's result, ``pass``, ``fail`` or ``skip``, by the check IDs in it (``group_of``)."""
+        results: dict[str, set[str]] = {}
+        for check in self.checks:
+            results.setdefault(group_of(check.id), set()).add(check.result)
+        return {
+            group: "fail" if "fail" in got else "pass" if "pass" in got else "skip"
+            for group in GROUPS
+            if (got := results.get(group))
+        }
+
+
+GROUPS = ("registration", "health", "cancellation", "calls")
+"""What a report's checks are about: the registration, readiness, cancellation, and the suite's calls."""
+
+
+def group_of(check_id: str) -> str:
+    """The group a check ID belongs to: ``common.health.*`` is health, ``common.cancel`` cancellation, the other
+    ``common.*`` checks the registration, and every case's checks the calls."""
+    if check_id.startswith("common.health."):
+        return "health"
+    if check_id == "common.cancel":
+        return "cancellation"
+    if check_id.startswith("common."):
+        return "registration"
+    return "calls"
 
 
 def _suite_dir(root: Path, profile: str) -> Path:
@@ -221,6 +305,14 @@ def load_common(registry: Registry) -> Common:
     return common
 
 
+def _fixtures_in(value: Any) -> list[str]:
+    """The fixture names a request uses, in order, once each."""
+    if isinstance(value, str):
+        return [value[len(FIXTURE) :]] if value.startswith(FIXTURE) else []
+    items = value.values() if isinstance(value, dict) else value if isinstance(value, list) else []
+    return list(dict.fromkeys(name for item in items for name in _fixtures_in(item)))
+
+
 def _contains(value: Any, marker: str) -> bool:
     if isinstance(value, str):
         return value == marker
@@ -265,16 +357,25 @@ def _case(item: Any, where: str, registry: Registry, profile: str, problems: lis
             problems.append(f"{where}: kinds must be a list of base kinds")
         else:
             kinds = tuple(ErrorKind(v) for v in values)
-    content: list[tuple[Location, str]] = []
+    content: list[Content] = []
     for c in item.get("content", []):
+        pointers_ok = isinstance(c, dict) and isinstance(c.get("pointer"), str)
+        where_ok = isinstance(c, dict) and isinstance(c.get("where", {}), dict)
         if (
-            not isinstance(c, dict)
+            not pointers_ok
+            or not where_ok
             or c.get("in") not in {loc.value for loc in _CONTENT_LOCATIONS}
-            or not isinstance(c.get("pointer"), str)
+            or not isinstance(c.get("value", ""), str)
+            or set(c) - {"in", "pointer", "where", "value"}
         ):
-            problems.append(f"{where}: each content item needs `in` (body, last-line, any-line…) and a pointer")
+            problems.append(
+                f"{where}: each content item needs `in` (body, last-line, any-line…) and a pointer, and may add "
+                "`where` (relative pointers to values) and `value` (a relative pointer)"
+            )
         else:
-            content.append((Location(c["in"]), c["pointer"]))
+            content.append(
+                Content(Location(c["in"]), c["pointer"], tuple(c.get("where", {}).items()), c.get("value", ""))
+            )
     limit = None
     if "limit" in item:
         raw = item["limit"]
@@ -296,6 +397,18 @@ def _case(item: Any, where: str, registry: Registry, profile: str, problems: lis
     for key in ("valid", "work_reports"):
         if key in item and not isinstance(item[key], bool):
             problems.append(f"{where}: {key} must be true or false")
+    fetch = item.get("fetch", [])
+    if not isinstance(fetch, list) or not all(isinstance(f, str) and f.startswith(FIXTURE) for f in fetch):
+        problems.append(f'{where}: fetch must list fixtures, such as ["$fixture.descriptor_url"]')
+        fetch = []
+    names = _fixtures_in(item.get("request")) + [f[len(FIXTURE) :] for f in fetch]
+    for name in names:
+        if not _FIXTURE_NAME.match(name):
+            problems.append(f"{where}: fixture {name!r} must be lowercase letters, digits and underscores")
+    when = item.get("when", {})
+    if not isinstance(when, dict) or not all(isinstance(k, str) and k.startswith("/") for k in when):
+        problems.append(f'{where}: when must map envelope pointers to values, such as {{"/reasoning/default": "off"}}')
+        when = {}
     assert isinstance(endpoint, str)  # an operation was found for it
     return Case(
         id=case_id,
@@ -307,6 +420,9 @@ def _case(item: Any, where: str, registry: Registry, profile: str, problems: lis
         content=tuple(content),
         work_reports=item.get("work_reports", False) is True,
         limit=limit,
+        when=tuple(when.items()),
+        fixtures=tuple(dict.fromkeys(names)),
+        fetch=tuple(f[len(FIXTURE) :] for f in fetch),
     )
 
 
@@ -446,6 +562,8 @@ class _Run:
         self.checks: list[Check] = []
         self.envelope: Envelope | None = None
         self.endpoints: dict[str, Endpoint] = {}
+        self.health_ready: bool | None = None
+        """Whether health answered ready before the cases ran; None until it was probed."""
 
     def add(self, check_id: str, result: str, detail: str = "") -> None:
         self.checks.append(Check(check_id, result, detail[:_DETAIL_MAX]))
@@ -521,7 +639,7 @@ class _Run:
             problems.append(f"it answers {answer.status}")
         validator = self._health_validator()
         if validator is not None:
-            problems += [f"its body {e.message}" for e in validator.iter_errors(body)][:3]
+            problems += list(schema_problems(validator.iter_errors(body), "its body"))[:3]
         if not isinstance(body, dict) or body.get("status") != "ready":
             problems.append('its body isn\'t {"status": "ready"}')
         if answer.headers_s > self.common.headers_within_s:
@@ -532,6 +650,8 @@ class _Run:
 
     def check_health(self, check_id: str) -> None:
         ok, detail = self.probe_health()
+        if self.health_ready is None:
+            self.health_ready = ok
         self.add(check_id, "pass" if ok else "fail", detail)
 
     # The suite's cases
@@ -561,6 +681,8 @@ class _Run:
                 return model
             if value == "$fill":
                 return filler
+            if isinstance(value, str) and value.startswith(FIXTURE):
+                return self.options.fixtures[value[len(FIXTURE) :]]
             if isinstance(value, dict):
                 return {k: fill(v) for k, v in value.items()}
             if isinstance(value, list):
@@ -580,6 +702,15 @@ class _Run:
         method = endpoint.method or operation.method
         return _exchange(method, url, body, accept=accept, timeout=self.options.timeout, abandon=abandon)
 
+    def _undeclared(self, case: Case) -> str | None:
+        """The first of the case's ``when`` values the envelope doesn't declare, described; None when all hold."""
+        document = _decoded(self.target.metadata)
+        for pointer, value in case.when:
+            found = lookup_all(document, pointer) if isinstance(document, dict) else []
+            if not any(json_equal(v, value) for v in found):
+                return f"the runner's envelope doesn't declare {pointer} = {json.dumps(value)}"
+        return None
+
     def run_case(self, case: Case) -> None:
         prefix = case.id
         operation = self.registry.operation(self.suite.profile, case.endpoint)
@@ -588,6 +719,14 @@ class _Run:
             return
         if case.endpoint not in self.endpoints:
             self.add(prefix, "skip", f"the runner doesn't advertise {case.endpoint}")
+            return
+        undeclared = self._undeclared(case)
+        if undeclared:
+            self.add(prefix, "skip", f"{undeclared}, so this case doesn't apply")
+            return
+        missing = [n for n in case.fixtures if n not in self.options.fixtures]
+        if missing:
+            self.add(prefix, "fail", f"the case needs fixture(s) {', '.join(missing)}: pass --fixtures with them")
             return
         if _contains(case.request, "$model") and not self.target.model:
             self.add(
@@ -602,15 +741,14 @@ class _Run:
         request = self._request(case, filler)
 
         check = validate_request(self.registry, self.suite.profile, case.endpoint, request)
+        problems = list(check.problems)  # never the values, so never a fixture's signed URL or grant
         if case.valid and not check.ok:
-            self.add(
-                f"{prefix}.request", "fail", "the suite's request breaks the entry: " + "; ".join(check.problems[:3])
-            )
+            self.add(f"{prefix}.request", "fail", "the suite's request breaks the entry: " + "; ".join(problems[:3]))
             return
         if not case.valid and check.ok:
             self.add(f"{prefix}.request", "fail", "the suite's invalid request is valid against the entry")
             return
-        detail = "valid against the entry" if case.valid else f"invalid as intended: {check.problems[0]}"
+        detail = "valid against the entry" if case.valid else f"invalid as intended: {problems[0]}"
         self.add(f"{prefix}.request", "pass", detail)
 
         answer = self._send(case, operation, request)
@@ -645,6 +783,7 @@ class _Run:
         if case.framing is not None and result.success:
             self._check_content(prefix, case, result, answer)
             self._check_work(prefix, case, operation, request, result)
+            self._check_fetch(prefix, case)
             if result.framing in STREAMS:
                 keepalive = self.common.keepalive_s
                 ok = answer.longest_gap_s <= keepalive
@@ -710,14 +849,34 @@ class _Run:
             return
         units = [value for _, value in self._units(result, answer)]
         missing = []
-        for location, pointer in case.content:
-            pool = units[-1:] if location in (Location.LAST_LINE, Location.LAST_EVENT) else units
-            if not any(_nonempty(v) for unit in pool for v in lookup_all(unit, pointer)):
-                missing.append(f"{location.value} {pointer}")
+        for content in case.content:
+            pool = units[-1:] if content.location in (Location.LAST_LINE, Location.LAST_EVENT) else units
+            if not any(content.found(unit) for unit in pool):
+                missing.append(content.describe())
         if missing:
             self.add(f"{prefix}.content", "fail", "nothing non-empty at " + ", ".join(missing))
         else:
             self.add(f"{prefix}.content", "pass", "the answer carries content where the suite looks")
+
+    def _check_fetch(self, prefix: str, case: Case) -> None:
+        """Each URL the case names answers 2xx with a body. Details name fixtures, never their values."""
+        if not case.fetch:
+            return
+        problems = []
+        for name in case.fetch:
+            url = self.options.fixtures.get(name)
+            if not isinstance(url, str) or urlsplit(url).scheme not in ("http", "https"):
+                problems.append(f"fixture {name} isn't an http(s) URL")
+                continue
+            got = _exchange("GET", url, None, accept="*/*", timeout=self.options.timeout)
+            if got.error:
+                problems.append(f"{name} couldn't be fetched ({got.error.split(':', 1)[0]})")
+            elif not 200 <= got.status < 300 or not got.body:
+                problems.append(f"{name} answered {got.status}" + (" with no body" if not got.body else ""))
+        if problems:
+            self.add(f"{prefix}.fetch", "fail", "; ".join(problems))
+        else:
+            self.add(f"{prefix}.fetch", "pass", f"{', '.join(case.fetch)} answered 2xx with a body")
 
     def _check_work(self, prefix: str, case: Case, operation: Operation, request: Any, result: Result) -> None:
         if not case.work_reports:
@@ -755,10 +914,15 @@ class _Run:
             return
         settle = self.options.cancel_settle_s
         time.sleep(self.common.cancel_settle_s if settle is None else settle)
-        ready, detail = self.probe_health()
-        if not ready:
-            self.add(check_id, "fail", f"after {case.id} was closed mid-answer, health failed: {detail}")
-            return
+        health = "health stayed ready"
+        if self.health_ready:
+            ready, detail = self.probe_health()
+            if not ready:
+                self.add(check_id, "fail", f"after {case.id} was closed mid-answer, health failed: {detail}")
+                return
+        else:
+            # common.health.ready already failed; failing cancellation for it too would count one fault twice.
+            health = "health wasn't ready before, so only the next request was checked"
         follow = self._send(case, operation, request)
         reader = ResultReader(operation, status=follow.status, content_type=follow.content_type, request=request)
         reader.feed(follow.body)
@@ -771,7 +935,7 @@ class _Run:
         self.add(
             check_id,
             "pass",
-            f"{case.id} was closed {how}; health stayed ready and the next request succeeded. Black-box: that "
+            f"{case.id} was closed {how}; {health}, and the next request succeeded. Black-box: that "
             f"the work stopped within {self.common.cancel_within_s:g} s can't be seen from outside",
         )
 

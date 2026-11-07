@@ -32,6 +32,7 @@ __all__ = [
     "Ineligible",
     "IneligibleReason",
     "Model",
+    "Reasoning",
     "Runtime",
     "canonical_json",
     "deployment_revision",
@@ -109,6 +110,19 @@ class Runtime:
     encoder: str | None = None
 
 
+class Reasoning(StrEnum):
+    """The envelope's ``reasoning.default``: whether the model reasons when a request doesn't say."""
+
+    ON = "on"
+    OFF = "off"
+
+    @classmethod
+    def read(cls, value: object) -> Reasoning | None:
+        """The declared default, or None when the envelope declares none or a value this reader doesn't know."""
+        default = value.get("default") if isinstance(value, dict) else None
+        return cls(default) if default in {"on", "off"} else None
+
+
 @dataclass(frozen=True)
 class CapacityGroup:
     id: str
@@ -132,6 +146,8 @@ class Envelope:
     """What the envelope says. The admission that applies to an endpoint also depends on its entry: see ``select``."""
     capacity_group: CapacityGroup | None = None
     attributes: Mapping[str, AttributeValue] = field(default_factory=lambda: MappingProxyType({}))
+    reasoning: Reasoning | None = None
+    """``reasoning.default``; None when undeclared, so a gateway can rely on neither mode."""
     size: int = 0
     """The ``Metadata`` string's size in bytes."""
 
@@ -261,6 +277,7 @@ def _build(doc: dict[str, Any], size: int) -> Envelope:
         attributes=MappingProxyType(
             {k: tuple(v) if isinstance(v, list) else v for k, v in doc.get("attributes", {}).items()}
         ),
+        reasoning=Reasoning.read(doc.get("reasoning")),
         size=size,
     )
 

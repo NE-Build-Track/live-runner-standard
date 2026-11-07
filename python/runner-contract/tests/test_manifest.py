@@ -73,7 +73,15 @@ def test_the_example_builds_its_envelope() -> None:
     assert isinstance(envelope, Envelope)
     assert envelope.deployment_revision == revision_of(m)
     assert json.loads(text)["endpoints"] == {"chat_completions": {"profile": "openai.chat.v1"}}
-    assert list(json.loads(text)) == ["runner_contract", "deployment_revision", "model", "endpoints", "limits"]
+    assert list(json.loads(text)) == [
+        "runner_contract",
+        "deployment_revision",
+        "model",
+        "endpoints",
+        "runner_id",
+        "limits",
+    ]
+    assert json.loads(text)["runner_id"] == "qwen38-rig2"  # the node reports no runner ID in discovery
     assert not m.warnings
 
 
@@ -296,3 +304,26 @@ def test_a_static_block_needs_a_health_url() -> None:
 def test_an_envelope_over_1024_bytes_is_refused() -> None:
     with pytest.raises(ManifestError, match="the limit is 1,024"):
         render_envelope(manifest(EXAMPLE + f'\n[attributes]\nnote = "{"x" * 900}"\n'))
+
+
+def test_the_reasoning_default_reaches_the_envelope() -> None:
+    envelope = parse_envelope(render_envelope(manifest(EXAMPLE + '\n[reasoning]\ndefault = "off"\n')))
+    assert isinstance(envelope, Envelope) and envelope.reasoning == "off"
+    assert "reasoning" not in build_envelope(manifest())
+
+
+@pytest.mark.parametrize(
+    ("table", "expected"),
+    [
+        ('default = "sometimes"', "[reasoning] default: must be on"),
+        ("", "[reasoning] default: is required"),
+        ('default = "on"\nswitch = true', "[reasoning] switch: isn't a manifest key"),
+    ],
+)
+def test_a_bad_reasoning_table(table: str, expected: str) -> None:
+    assert any(p.startswith(expected) for p in problems(EXAMPLE + "\n[reasoning]\n" + table + "\n"))
+
+
+def test_a_reasoning_default_without_settings_warns() -> None:
+    text = EXAMPLE.replace("settings = { max_model_len = 131072 }", "") + '\n[reasoning]\ndefault = "on"\n'
+    assert any("[reasoning] default" in w for w in manifest(text).warnings)

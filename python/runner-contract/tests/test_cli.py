@@ -184,7 +184,11 @@ def test_check_reads_each_runner_of_a_file(work: Path, release_dir: Path, capsys
     text = path.read_text()
     path.write_text(text + text.replace('ID = "qwen38-rig2"', 'ID = "second"').replace("Capacity = 8", "Capacity = 0"))
     status, lines = check(capsys, path, release_dir)
-    assert status == 1 and lines == [f"{path}: second: Capacity: must be an integer from 1 to 10,000"]
+    assert status == 1 and lines == [
+        f"{path}: second: Capacity: must be an integer from 1 to 10,000",
+        f"{path}: second: runner_id: the envelope names 'qwen38-rig2' and the registration 'second'; "
+        "a gateway excludes a runner whose two IDs differ",
+    ]
 
 
 def test_check_needs_a_registry(work: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -335,4 +339,4 @@ def test_draft_problems_are_usage_errors(tmp_path: Path, capsys: pytest.CaptureF
 def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["--version"])
-    assert capsys.readouterr().out.strip() == "runner-contract 0.2.0"
+    assert capsys.readouterr().out.strip() == "runner-contract 0.3.0"

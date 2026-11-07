@@ -1,10 +1,11 @@
 """The ``runner-contract`` builder tool.
 
-    runner-contract init --capability chat --profile openai.chat.v1 [--out runner.toml]
+    runner-contract init --capability chat --profile openai.chat.v2 [--out runner.toml]
     runner-contract envelope runner.toml
     runner-contract block runner.toml [--format toml|json]
     runner-contract check block.toml|registration.json|envelope.json [--manifest runner.toml] [--registry DIR]
     runner-contract conform --manifest runner.toml [--block block.toml] [--url URL] [--profile ID] [--out report.json]
+    runner-contract ready --manifest runner.toml --engine-health URL [--listen HOST:PORT] [--front]
     runner-contract draft --openapi openapi.json [--profile ID]
     runner-contract draft --pydantic module:Request,module:Response [--profile ID]
 
@@ -16,8 +17,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
+import time
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .check import check_registrations, read_registrations
@@ -25,6 +29,7 @@ from .conform import Options, SuiteError, Target, available_suites, profiles_to_
 from .draft import draft_from_models, draft_from_openapi
 from .envelope import Envelope, _parse
 from .manifest import Manifest, ManifestError, load_manifest, render_block_json, render_block_toml, render_envelope
+from .ready import Readiness, engine_up, front, self_test, serve
 from .registry import EntryKind, Registry, RegistryError
 from .standard import PROFILE_ID, RUNNER_CONTRACT, Capability, Mode, capabilities
 
@@ -90,6 +95,9 @@ unit = "hour"                        # hour (runner time) or fixed (per call): h
 {endpoints}
 # [limits]                           # only limits the runner enforces
 # context_tokens = 131072
+
+# [reasoning]                        # a model that can reason: whether it does when a request doesn't say
+# default = "on"                     # on or off; put the setting that makes it in [revision] settings
 
 [revision]                           # the deployment_revision recipe's inputs
 images = ["TODO"]                    # every image, pinned: name@sha256:<64 hex>
@@ -253,6 +261,23 @@ def _conform_target(args: argparse.Namespace, registry: Registry) -> Target:
     )
 
 
+def _fixtures(path: str | None) -> dict[str, Any]:
+    """The builder's fixtures file: a JSON object of names to values. Its values are never printed."""
+    if path is None:
+        return {}
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise _Usage(f"{path}: {exc.strerror or exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise _Usage(f"{path}: isn't JSON ({exc.msg} at line {exc.lineno})") from exc
+    except ValueError as exc:
+        raise _Usage(f"{path}: isn't UTF-8 text") from exc
+    if not isinstance(doc, dict):
+        raise _Usage(f"{path}: must be a JSON object of fixture names to values")
+    return doc
+
+
 def _report_path(out: str, profile: str, several: bool) -> Path:
     path = Path(out)
     return path.with_name(f"{path.stem}.{profile}{path.suffix}") if several else path
@@ -269,7 +294,12 @@ def cmd_conform(args: argparse.Namespace) -> int:
     if missing:
         where = f"registry release {registry.release}" if registry.release else f"the registry at {registry.root}"
         raise _Usage(f"{where} has no conformance suite for {', '.join(missing)}")
-    options = Options(timeout=args.timeout, health_timeout=args.health_timeout, cancel_settle_s=args.cancel_settle)
+    options = Options(
+        timeout=args.timeout,
+        health_timeout=args.health_timeout,
+        cancel_settle_s=args.cancel_settle,
+        fixtures=_fixtures(args.fixtures),
+    )
     failed = False
     for profile in profiles:
         try:
@@ -283,13 +313,71 @@ def cmd_conform(args: argparse.Namespace) -> int:
             if check.result != "pass" or args.verbose:
                 print(f"{check.result:4}  {check.id}: {check.detail}", file=sys.stderr)
         verdict = "pass" if report.passed else "FAIL"
+        groups = ", ".join(f"{g} {'FAIL' if r == 'fail' else r}" for g, r in report.groups.items())
         print(
-            f"{profile}: {verdict} ({counts['pass']} passed, {counts['fail']} failed, {counts['skip']} skipped); "
-            f"wrote {path}",
+            f"{profile}: {verdict} ({counts['pass']} passed, {counts['fail']} failed, {counts['skip']} skipped: "
+            f"{groups}); wrote {path}",
             file=sys.stderr,
         )
         failed = failed or not report.passed
     return 1 if failed else 0
+
+
+def _listen(value: str) -> tuple[str, int]:
+    host, _, port = value.rpartition(":")
+    if not port.isdigit() or not 0 < int(port) < 65536:
+        raise _Usage(f"--listen {value}: expected HOST:PORT, such as 0.0.0.0:8080")
+    # Every interface by default: the node reaches this service across its container network.
+    return host or "0.0.0.0", int(port)  # noqa: S104
+
+
+def cmd_ready(args: argparse.Namespace) -> int:
+    registry = _registry(args.registry, required=True)
+    assert registry is not None
+    target = _conform_target(args, registry)
+    profiles = profiles_to_run(target, registry)
+    if not profiles:
+        raise _Usage("no profile to self-test: the envelope advertises none")
+    missing = [p for p in profiles if p not in available_suites(registry.root or Path("."))]
+    if missing:
+        raise _Usage(f"no conformance suite to self-test {', '.join(missing)} with; the self-test is the suite's")
+    host, port = _listen(args.listen)
+    options = Options(timeout=args.timeout, fixtures=_fixtures(args.fixtures))
+    readiness = Readiness(
+        lambda: self_test(registry, target, options),
+        lambda: engine_up(args.engine_health, args.engine_timeout),
+        retest=args.retest,
+    )
+    try:
+        if args.front:
+            server = front(readiness, target.url, host, port, health_path=args.health_path)
+        else:
+            server = serve(readiness, host, port)
+    except OSError as exc:
+        raise _Usage(f"--listen {args.listen}: {exc.strerror or exc}") from exc
+
+    def observe() -> None:
+        while True:
+            before = readiness.state
+            state = readiness.step()
+            if state != before:
+                print(f"{state}: {readiness.detail}", file=sys.stderr, flush=True)
+            time.sleep(args.interval)
+
+    threading.Thread(target=observe, name="readiness", daemon=True).start()
+    where = (
+        f"{host}:{port}{args.health_path}, relaying every other call to {target.url}"
+        if args.front
+        else f"{host}:{port}"
+    )
+    print(f"answering livepeer.health.v1 on {where} for {', '.join(profiles)}", file=sys.stderr, flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
 
 
 def cmd_draft(args: argparse.Namespace) -> int:
@@ -376,8 +464,43 @@ def parser() -> argparse.ArgumentParser:
         type=float,
         help="seconds to wait after closing a request mid-answer before probing health (default: the common suite's)",
     )
+    p.add_argument(
+        "--fixtures",
+        metavar="FILE",
+        help='values the suite\'s cases name as "$fixture.<name>", as a JSON object: input URLs, digests, grants',
+    )
     p.add_argument("--verbose", action="store_true", help="print passing checks too")
     p.set_defaults(run=cmd_conform)
+
+    p = sub.add_parser(
+        "ready", help="answer a runner's health check: self-test each profile, then follow the engine's health"
+    )
+    p.add_argument("--manifest", help="the runner's manifest")
+    given = p.add_mutually_exclusive_group()
+    given.add_argument("--block", help="the runner's [[Runners]] block or registration JSON, as registered")
+    given.add_argument("--envelope", help="the runner's envelope, as registered in Metadata")
+    p.add_argument("--url", help="the engine's base URL (default: the manifest's or block's)")
+    p.add_argument(
+        "--engine-health", required=True, help="the engine's own health check, such as http://vllm:8000/health"
+    )
+    p.add_argument("--listen", default="0.0.0.0:8080", help="where to answer, HOST:PORT (default 0.0.0.0:8080)")
+    p.add_argument(
+        "--front",
+        action="store_true",
+        help="also relay every request but the health check to the engine, for a runner reached at one address",
+    )
+    p.add_argument("--health-path", default="/healthz", help="with --front, the health check's path (default /healthz)")
+    p.add_argument("--registry", help=registry_help + "; its conformance/ holds the self-test")
+    p.add_argument("--runner-id", help="pick one registration from a block that holds several")
+    p.add_argument("--model", help="the model name requests send (default: the manifest's or envelope's)")
+    p.add_argument("--interval", type=float, default=10.0, help="seconds between checks of the engine (default 10)")
+    p.add_argument(
+        "--retest", type=float, default=0.0, help="seconds between self-tests while ready (default 0: only on recovery)"
+    )
+    p.add_argument("--timeout", type=float, default=120.0, help="seconds to wait on each self-test request")
+    p.add_argument("--fixtures", metavar="FILE", help="values the self-test's cases name, as for conform")
+    p.add_argument("--engine-timeout", type=float, default=10.0, help="seconds to wait on the engine's health check")
+    p.set_defaults(run=cmd_ready, health_url=None)
 
     p = sub.add_parser("draft", help="draft a registry entry skeleton for a steward to review")
     source = p.add_mutually_exclusive_group(required=True)

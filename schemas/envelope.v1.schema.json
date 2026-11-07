@@ -100,6 +100,17 @@
         }
       }
     },
+    "reasoning": {
+      "description": "Whether the model reasons before it answers when a request doesn't say. A reader treats a default other than on or off as undeclared",
+      "type": "object",
+      "required": ["default"],
+      "properties": {
+        "default": {
+          "description": "on: it reasons by default; off: it answers without reasoning. Any string, so a later value never makes a runner ineligible",
+          "type": "string"
+        }
+      }
+    },
     "attributes": {
       "description": "App-specific selection values, passed through uninterpreted",
       "type": "object",

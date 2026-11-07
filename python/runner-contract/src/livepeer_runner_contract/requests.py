@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError, best_match
 from referencing import Registry as SchemaRegistry
 from referencing import Resource
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
-from ._json import ABSENT, escape, lookup
+from ._json import ABSENT, escape, lookup, safe
 from .registry import Operation, Registry
 
 __all__ = [
@@ -21,6 +23,7 @@ __all__ = [
     "is_json_media_type",
     "media_type_matches",
     "response_schema",
+    "schema_problems",
     "validate_request",
     "validate_response",
 ]
@@ -71,6 +74,74 @@ def _request_body(operation: Operation) -> tuple[dict[str, Any] | None, str]:
         pointer = body["$ref"][1:]
         body = lookup(operation.document, pointer)
     return (body if isinstance(body, dict) else None), pointer
+
+
+_MOST_VALUES = 12  # an enum's values a problem lists before it says how many more there are
+
+
+def _what(error: ValidationError) -> str:
+    """What the schema wants where ``error`` is, in the schema's words alone."""
+    keyword, expected, instance = error.validator, cast(Any, error.validator_value), error.instance
+    schema = error.schema if isinstance(error.schema, dict) else {}
+    if keyword is None:  # a false schema
+        return "isn't allowed"
+    if "propertyNames" in error.relative_schema_path:
+        return "has a member name that " + (f"doesn't match {expected}" if keyword == "pattern" else "isn't allowed")
+    if keyword == "required" and isinstance(instance, dict):
+        return "is missing " + ", ".join(k for k in expected if k not in instance)
+    if keyword == "additionalProperties" and isinstance(instance, dict):
+        extra = [safe(k, 40) for k in instance if k not in (schema.get("properties") or {})]
+        return "has members the entry doesn't allow: " + ", ".join(extra[:5]) + (", …" if len(extra) > 5 else "")
+    if keyword == "type":
+        return f"must be of type {expected if isinstance(expected, str) else ' or '.join(expected)}"
+    if keyword == "const":
+        return f"must be {json.dumps(expected)}"
+    if keyword == "enum":
+        shown = ", ".join(json.dumps(v) for v in expected[:_MOST_VALUES])
+        more = len(expected) - _MOST_VALUES
+        return f"must be one of {shown}" + (f" or {more} more" if more > 0 else "")
+    if keyword == "not":
+        described = schema.get("description")
+        return f"isn't allowed. {described}" if isinstance(described, str) else "isn't allowed"
+    if keyword in ("anyOf", "oneOf"):
+        if keyword == "oneOf" and not error.context:
+            return "matches more than one of the shapes the entry describes"
+        return "matches none of the shapes the entry describes"
+    return _BOUNDS.get(str(keyword), "breaks the entry's {keyword} rule").format(expected=expected, keyword=keyword)
+
+
+_BOUNDS = {
+    "pattern": "doesn't match {expected}",
+    "format": "isn't a valid {expected}",
+    "minimum": "must be at least {expected}",
+    "exclusiveMinimum": "must be more than {expected}",
+    "maximum": "must be at most {expected}",
+    "exclusiveMaximum": "must be less than {expected}",
+    "multipleOf": "must be a multiple of {expected}",
+    "minLength": "must be at least {expected} characters",
+    "maxLength": "must be at most {expected} characters",
+    "minItems": "must have at least {expected} items",
+    "maxItems": "must have at most {expected} items",
+    "uniqueItems": "must not repeat an item",
+    "minProperties": "must have at least {expected} members",
+    "maxProperties": "must have at most {expected} members",
+}
+
+
+def schema_problems(errors: Iterable[ValidationError], subject: str = "the body") -> tuple[str, ...]:
+    """Schema errors as lines that say where and what the schema wants, never the value itself.
+
+    A refused value can be a caller's whole conversation or a runner's whole answer, and these lines go
+    to callers and into logs. Where a value matches none of a union's shapes, such as a block in a list
+    keyed by ``type``, the line names the deepest cause, which is in the shape the value's type picks.
+    """
+    lines = []
+    for error in sorted(errors, key=lambda e: [str(p) for p in e.absolute_path]):
+        cause = best_match([error]) or error
+        what = _what(cause)
+        path = cause.absolute_path
+        lines.append(f"at /{'/'.join(escape(str(p)) for p in path)}: {what}" if path else f"{subject} {what}")
+    return tuple(dict.fromkeys(lines))
 
 
 def _validator(registry: Registry, operation: Operation, pointer: str) -> Draft202012Validator:
@@ -126,16 +197,9 @@ def validate_request(
         return RequestCheck()
     pointer = f"{body_pointer}/content/{escape(declared)}/schema"
     try:
-        errors = sorted(
-            _validator(registry, operation, pointer).iter_errors(body), key=lambda e: list(map(str, e.path))
-        )
+        return RequestCheck(schema_problems(_validator(registry, operation, pointer).iter_errors(body)))
     except Unresolvable as exc:
         return RequestCheck((f"the entry's request schema can't be resolved: {exc}",))
-    problems = []
-    for error in errors:
-        where = "/" + "/".join(escape(str(p)) for p in error.absolute_path)
-        problems.append(f"at {where}: {error.message}" if error.absolute_path else error.message)
-    return RequestCheck(tuple(problems))
 
 
 def response_schema(operation: Operation, status: int, content_type: str | None) -> str | None:
@@ -184,13 +248,6 @@ def validate_response(
     if pointer is None:
         return None
     try:
-        errors = sorted(
-            _validator(registry, operation, pointer).iter_errors(value), key=lambda e: list(map(str, e.path))
-        )
+        return SchemaCheck(schema_problems(_validator(registry, operation, pointer).iter_errors(value)))
     except Unresolvable as exc:
         return SchemaCheck((f"the entry's response schema can't be resolved: {exc}",))
-    problems = []
-    for error in errors:
-        where = "/" + "/".join(escape(str(p)) for p in error.absolute_path)
-        problems.append(f"at {where}: {error.message}" if error.absolute_path else error.message)
-    return SchemaCheck(tuple(problems))

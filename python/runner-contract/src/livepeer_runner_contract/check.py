@@ -222,6 +222,16 @@ def _check_one(
         return problems
 
     problems.extend(_endpoint_problems(parsed, app, mode, registry))
+    if (
+        not reg.bare
+        and parsed.runner_id is not None
+        and reg.runner_id is not None
+        and parsed.runner_id != reg.runner_id
+    ):
+        problems.append(
+            f"runner_id: the envelope names {parsed.runner_id!r} and the registration {reg.runner_id!r}; "
+            "a gateway excludes a runner whose two IDs differ"
+        )
     if manifest is not None:
         expected = revision_of(manifest)
         if parsed.deployment_revision != expected:

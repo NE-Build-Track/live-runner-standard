@@ -59,8 +59,20 @@ _KEYS: Mapping[str, tuple[str, ...]] = {
     "revision": ("images", "settings", "presets"),
     "runtime": ("name", "image", "versions", "encoder"),
     "capacity_group": ("id", "slots"),
+    "reasoning": ("default",),
 }
-_TABLES = ("runner", "price", "model", "endpoints", "limits", "revision", "runtime", "capacity_group", "attributes")
+_TABLES = (
+    "runner",
+    "price",
+    "model",
+    "endpoints",
+    "limits",
+    "revision",
+    "runtime",
+    "capacity_group",
+    "attributes",
+    "reasoning",
+)
 
 
 class ManifestError(ValueError):
@@ -93,6 +105,8 @@ class Manifest:
     runtime: Mapping[str, Any] | None = None
     capacity_group: CapacityGroup | None = None
     attributes: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    reasoning: str | None = None
+    """``[reasoning] default``: ``on`` or ``off``."""
     warnings: tuple[str, ...] = ()
 
 
@@ -337,6 +351,18 @@ def parse_manifest(text: str, *, capabilities: Mapping[str, Capability]) -> Mani
         elif r.json_value(value, f"[attributes] {key}"):
             attributes[key] = _plain(value)
 
+    reasoning_table = r.table(doc, "reasoning", required=False)
+    reasoning = r.string(reasoning_table, "default", "[reasoning]", required=False)
+    if "reasoning" in doc and "default" not in reasoning_table:
+        r.fail("[reasoning] default", "is required in a [reasoning] table")
+    elif reasoning is not None and reasoning not in ("on", "off"):
+        r.fail("[reasoning] default", "must be on (the model reasons unless asked not to) or off")
+    elif reasoning is not None and not settings:
+        r.warnings.append(
+            "[reasoning] default: put the runtime setting that makes it in [revision] settings, so the revision "
+            "changes when the default does"
+        )
+
     if r.problems:
         raise ManifestError(r.problems)
     assert runner_id and app and mode and capacity and url and amount is not None and currency and unit  # noqa: PT018
@@ -361,6 +387,7 @@ def parse_manifest(text: str, *, capabilities: Mapping[str, Capability]) -> Mani
         runtime=runtime,
         capacity_group=capacity_group,
         attributes=MappingProxyType(attributes),
+        reasoning=reasoning,
         warnings=tuple(r.warnings),
     )
 
@@ -477,6 +504,8 @@ def build_envelope(manifest: Manifest) -> dict[str, Any]:
                 item[key] = getattr(e, key)
         endpoints[e.name] = item
     envelope["endpoints"] = endpoints
+    # Livepeer Node (bbe126e) reports no runner ID in discovery, so the envelope carries it, as SPEC.md allows.
+    envelope["runner_id"] = manifest.id
     if manifest.limits:
         envelope["limits"] = dict(manifest.limits)
     if manifest.runtime:
@@ -487,6 +516,8 @@ def build_envelope(manifest: Manifest) -> dict[str, Any]:
         envelope["capacity_group"] = {"id": manifest.capacity_group.id, "slots": manifest.capacity_group.slots}
     if manifest.attributes:
         envelope["attributes"] = dict(manifest.attributes)
+    if manifest.reasoning is not None:
+        envelope["reasoning"] = {"default": manifest.reasoning}
     return envelope
 
 

@@ -1,0 +1,1262 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openai.chat.v2",
+    "version": "2",
+    "description": "OpenAI Chat Completions: a conversation in, the model's reply out, as one JSON answer or, on request, a stream of server-sent events. v2 checks the tools, tool calls and content parts it describes and passes those of other types, such as custom tools, to the runner; v1 refused them. Drafted from NE-Build-Track/inference-gateway at e5b47d8."
+  },
+  "paths": {
+    "/v1/chat/completions": {
+      "post": {
+        "operationId": "chat_completions",
+        "summary": "Reply to a conversation",
+        "description": "Replies to a conversation of text and images. Images travel inline as base64 data URLs, and the runner fetches no URLs. Tools, tool calls and content parts of types this entry doesn't describe pass to the runner, which serves, ignores or refuses them; it still fetches no URLs. With stream set to true the answer is a stream of chunks that ends with the event [DONE].",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              },
+              "examples": {
+                "text": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What is Livepeer?"
+                      }
+                    ],
+                    "max_tokens": 128
+                  }
+                },
+                "stream": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What is Livepeer?"
+                      }
+                    ],
+                    "stream": true,
+                    "stream_options": {
+                      "include_usage": true
+                    }
+                  }
+                },
+                "image": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "What color is this image?"
+                          },
+                          {
+                            "type": "image_url",
+                            "image_url": {
+                              "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "max_tokens": 32
+                  }
+                },
+                "tool_result": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What's the weather in Boston?"
+                      },
+                      {
+                        "role": "assistant",
+                        "content": null,
+                        "tool_calls": [
+                          {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                              "name": "weather",
+                              "arguments": "{\"city\":\"Boston\"}"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "role": "tool",
+                        "tool_call_id": "call_1",
+                        "content": "Sunny, 18 °C"
+                      }
+                    ],
+                    "tools": [
+                      {
+                        "type": "function",
+                        "function": {
+                          "name": "weather",
+                          "description": "Current weather for a city",
+                          "parameters": {
+                            "type": "object",
+                            "properties": {
+                              "city": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "city"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The reply: one JSON answer, or a stream of server-sent events when stream is true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletion"
+                },
+                "examples": {
+                  "text": {
+                    "value": {
+                      "id": "chatcmpl-7f3a",
+                      "object": "chat.completion",
+                      "created": 1793952000,
+                      "model": "qwen3.8-27b",
+                      "choices": [
+                        {
+                          "index": 0,
+                          "message": {
+                            "role": "assistant",
+                            "content": "Livepeer is a decentralized video and AI compute network."
+                          },
+                          "finish_reason": "stop"
+                        }
+                      ],
+                      "usage": {
+                        "prompt_tokens": 15,
+                        "completion_tokens": 9,
+                        "total_tokens": 24,
+                        "prompt_tokens_details": null
+                      }
+                    }
+                  }
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionEvent"
+                },
+                "examples": {
+                  "chunk": {
+                    "value": {
+                      "id": "chatcmpl-7f3a",
+                      "object": "chat.completion.chunk",
+                      "created": 1793952000,
+                      "model": "qwen3.8-27b",
+                      "choices": [
+                        {
+                          "index": 0,
+                          "delta": {
+                            "role": "assistant",
+                            "content": "Livepeer"
+                          },
+                          "finish_reason": null
+                        }
+                      ]
+                    }
+                  },
+                  "finish": {
+                    "value": {
+                      "id": "chatcmpl-7f3a",
+                      "object": "chat.completion.chunk",
+                      "created": 1793952000,
+                      "model": "qwen3.8-27b",
+                      "choices": [
+                        {
+                          "index": 0,
+                          "delta": {},
+                          "finish_reason": "stop"
+                        }
+                      ]
+                    }
+                  },
+                  "usage": {
+                    "value": {
+                      "id": "chatcmpl-7f3a",
+                      "object": "chat.completion.chunk",
+                      "created": 1793952000,
+                      "model": "qwen3.8-27b",
+                      "choices": [],
+                      "usage": {
+                        "prompt_tokens": 15,
+                        "completion_tokens": 9,
+                        "total_tokens": 24,
+                        "prompt_tokens_details": null
+                      }
+                    }
+                  },
+                  "done": {
+                    "value": "[DONE]"
+                  },
+                  "error": {
+                    "value": {
+                      "error": {
+                        "message": "The engine stopped during generation",
+                        "type": "InternalServerError",
+                        "code": 500
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the OpenAI format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                },
+                "examples": {
+                  "context": {
+                    "value": {
+                      "error": {
+                        "message": "This model's maximum context length is 131072 tokens. However, your request has 140112 input tokens.",
+                        "type": "BadRequestError",
+                        "param": null,
+                        "code": 400
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": [
+            "json",
+            "sse"
+          ],
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "framing": "sse",
+                "in": "last-event",
+                "data": "[DONE]"
+              }
+            ]
+          },
+          "errors": [
+            {
+              "framing": "sse",
+              "in": "any-event",
+              "pointer": "/error",
+              "present": true,
+              "kind": "internal",
+              "note": "An error chunk in a stream. vLLM and SGLang send [DONE] after it"
+            },
+            {
+              "framing": "sse",
+              "in": "any-event",
+              "pointer": "/object",
+              "equals": "error",
+              "kind": "internal",
+              "note": "An error chunk with its fields at the top level"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/type",
+              "equals": "exceed_context_size_error",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as llama.cpp reports it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as vLLM and Ollama report it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as SGLang reports it"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "The request is malformed or holds a value the runner refuses"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "The runner doesn't serve the requested model; no work started"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The request is larger than a limit the runner enforces, such as limits.max_input_bytes"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid",
+              "note": "A request validation error, as FastAPI-based servers report it"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "The runner is at capacity; no work started"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "The runner is loading, or its queue is full; no work started"
+            }
+          ],
+          "work_reports": [
+            {
+              "framing": "json",
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/prompt_tokens"
+            },
+            {
+              "framing": "json",
+              "measure": "output_tokens",
+              "in": "body",
+              "pointer": "/usage/completion_tokens"
+            },
+            {
+              "framing": "sse",
+              "measure": "input_tokens",
+              "in": "any-event",
+              "pointer": "/usage/prompt_tokens",
+              "request": {
+                "pointer": "/stream_options/include_usage",
+                "value": true
+              }
+            },
+            {
+              "framing": "sse",
+              "measure": "output_tokens",
+              "in": "any-event",
+              "pointer": "/usage/completion_tokens",
+              "request": {
+                "pointer": "/stream_options/include_usage",
+                "value": true
+              }
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/messages",
+              "kind": "inline",
+              "max_bytes": 8388608,
+              "media_types": [
+                "text/plain",
+                "image/png",
+                "image/jpeg",
+                "image/gif",
+                "image/webp"
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/choices",
+              "kind": "inline",
+              "max_bytes": 8388608
+            }
+          ],
+          "attempts": "gateway"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatCompletionRequest": {
+        "description": "A Chat Completions request. Fields not listed here pass to the runner unchanged, such as a runner's own sampling settings",
+        "type": "object",
+        "required": [
+          "model",
+          "messages"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model name the runner serves",
+            "type": "string",
+            "minLength": 1
+          },
+          "messages": {
+            "description": "The conversation so far, oldest message first",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          },
+          "stream": {
+            "description": "true for a stream of server-sent events; false or absent for one JSON answer",
+            "type": "boolean"
+          },
+          "stream_options": {
+            "description": "Streaming options. include_usage set to true adds a final chunk with token usage",
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "include_usage": {
+                "type": "boolean"
+              }
+            }
+          },
+          "max_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "The most tokens to generate"
+          },
+          "max_completion_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "The most tokens to generate, including reasoning tokens"
+          },
+          "temperature": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 2
+          },
+          "top_p": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "n": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "How many replies to generate"
+          },
+          "stop": {
+            "description": "Text that ends generation",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seed": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "presence_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -2,
+            "maximum": 2
+          },
+          "frequency_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -2,
+            "maximum": 2
+          },
+          "logprobs": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "top_logprobs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 20
+          },
+          "response_format": {
+            "$ref": "#/components/schemas/ResponseFormat"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tool"
+            }
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "auto",
+                  "required"
+                ]
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "function"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "function"
+                  },
+                  "function": {
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "description": "A choice of a tool of a type this entry doesn't describe, such as a custom tool or an allowed_tools list. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "not": {
+                      "enum": [
+                        "function"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parallel_tool_calls": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "Message": {
+        "description": "One message. Its content is text, or a list of parts: text and images are checked, and parts of other types pass",
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "system",
+              "developer",
+              "user",
+              "assistant",
+              "tool"
+            ]
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContentPart"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "tool_calls": {
+            "description": "Tool calls an earlier assistant message made",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            }
+          },
+          "tool_call_id": {
+            "description": "In a tool message, the call this result answers",
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ContentPart": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "text"
+            ],
+            "properties": {
+              "type": {
+                "const": "text"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "An image, inline as a base64 data URL. The runner fetches no URLs",
+            "type": "object",
+            "required": [
+              "type",
+              "image_url"
+            ],
+            "properties": {
+              "type": {
+                "const": "image_url"
+              },
+              "image_url": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$",
+                    "x-media": {
+                      "by": "inline",
+                      "accept": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/gif",
+                        "image/webp"
+                      ]
+                    }
+                  },
+                  "detail": {
+                    "enum": [
+                      "auto",
+                      "low",
+                      "high"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "description": "A content part of a type this entry doesn't describe, such as input_audio or file. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "text",
+                    "image_url"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ToolCall": {
+        "description": "A tool call: a function call, or a call of another type, such as a custom tool's",
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "type",
+              "function"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "const": "function"
+              },
+              "function": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "arguments"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "arguments": {
+                    "description": "The arguments, as JSON text",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "description": "A tool call of a type this entry doesn't describe, such as a custom tool's call. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "function"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "FunctionTool": {
+        "description": "A function the model may call",
+        "type": "object",
+        "required": [
+          "type",
+          "function"
+        ],
+        "properties": {
+          "type": {
+            "const": "function"
+          },
+          "function": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "parameters": {
+                "description": "A JSON Schema for the arguments",
+                "type": "object"
+              },
+              "strict": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "Tool": {
+        "description": "A tool the model may call: a function, checked in full, or a tool of another type, which passes",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/FunctionTool"
+          },
+          {
+            "description": "A tool of a type this entry doesn't describe, such as a custom tool. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "function"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ResponseFormat": {
+        "description": "The reply's format: text, any JSON object, or JSON matching a schema",
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          "json_schema": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "schema": {
+                "type": "object"
+              },
+              "strict": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "if": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "json_schema"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "json_schema"
+          ]
+        }
+      },
+      "Usage": {
+        "description": "Token counts. prompt_tokens includes any cached tokens",
+        "type": "object",
+        "required": [
+          "prompt_tokens",
+          "completion_tokens"
+        ],
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "prompt_tokens_details": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "cached_tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "ChatCompletion": {
+        "description": "The whole answer",
+        "type": "object",
+        "required": [
+          "id",
+          "object",
+          "created",
+          "model",
+          "choices",
+          "usage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "const": "chat.completion"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "message",
+                "finish_reason"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "message": {
+                  "type": "object",
+                  "required": [
+                    "role"
+                  ],
+                  "properties": {
+                    "role": {
+                      "const": "assistant"
+                    },
+                    "content": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "tool_calls": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "$ref": "#/components/schemas/ToolCall"
+                      }
+                    }
+                  }
+                },
+                "finish_reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Why generation stopped, such as stop, length or tool_calls"
+                }
+              }
+            }
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        }
+      },
+      "ChatCompletionEvent": {
+        "description": "The data of one server-sent event: a chunk, an error, or the text [DONE], which ends the stream and isn't JSON",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ChatCompletionChunk"
+          },
+          {
+            "$ref": "#/components/schemas/StreamError"
+          },
+          {
+            "const": "[DONE]"
+          }
+        ]
+      },
+      "ChatCompletionChunk": {
+        "description": "Part of the answer. With include_usage, the last chunk before [DONE] has empty choices and the usage",
+        "type": "object",
+        "required": [
+          "id",
+          "object",
+          "created",
+          "model",
+          "choices"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "const": "chat.completion.chunk"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "delta"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "delta": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "tool_calls": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "index"
+                        ],
+                        "properties": {
+                          "index": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "const": "function"
+                          },
+                          "function": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "arguments": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "finish_reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Usage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "StreamError": {
+        "description": "An error sent in place of a chunk",
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "ErrorBody": {
+        "description": "An error answer. Most runners nest the fields under error; SGLang puts them at the top level with object set to error, and FastAPI validation errors carry detail",
+        "type": "object",
+        "anyOf": [
+          {
+            "required": [
+              "error"
+            ]
+          },
+          {
+            "required": [
+              "object",
+              "message"
+            ]
+          },
+          {
+            "required": [
+              "detail"
+            ]
+          }
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "param": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          },
+          "object": {
+            "const": "error"
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "array",
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "openai.chat.v2",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "chat"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}
