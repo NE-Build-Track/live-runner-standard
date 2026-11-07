@@ -14,19 +14,19 @@ Neither package is published to PyPI. Install them from this repository's tags:
 
 ```sh
 # the tool and the library
-pip install "livepeer-runner-contract @ git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract"
+pip install "livepeer-runner-contract @ git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.3.0#subdirectory=python/runner-contract"
 
 # a registry release, which a gateway pins (or pass Registry.load a directory instead)
-pip install "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@2026.11.1#subdirectory=python/runner-registry"
+pip install "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@2026.11.3#subdirectory=python/runner-registry"
 
 # or run the tool without installing it
-uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.1.0#subdirectory=python/runner-contract" \
+uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.3.0#subdirectory=python/runner-contract" \
   runner-contract block runner.toml
 ```
 
 `runner-contract check` needs a registry release: pass `--registry DIR` (a checkout of this
 repository works), or add the registry package to the same run with
-`uvx --with "livepeer-runner-registry @ git+…@2026.11.1#subdirectory=python/runner-registry" --from … runner-contract check …`.
+`uvx --with "livepeer-runner-registry @ git+…@2026.11.3#subdirectory=python/runner-registry" --from … runner-contract check …`.
 
 The library doesn't depend on the registry package, so it never chooses a release for a gateway: a
 gateway pins one itself (SPEC.md, gateway rule 5). There is no extra for it either, since an extra
@@ -68,11 +68,10 @@ reports:
 
 `runner-contract conform` proves a runner speaks its profiles (SPEC.md, "Conformance, interim"). It
 runs on the runner's own host and calls the runner directly at `--url`: no node, no payment. The
-builder attaches each report it writes to an approval request. It is new in 0.2: until `v0.2.0` is
-tagged, install from `main` (`@main` in place of `@v0.1.0` above).
+builder attaches each report it writes to an approval request.
 
 ```sh
-runner-contract conform --manifest runner.toml --registry path/to/registry-2026.11.2 --out report.json
+runner-contract conform --manifest runner.toml --registry path/to/registry-2026.11.3 --out report.json
 ```
 
 | Option | What it does |
@@ -177,7 +176,7 @@ Suites ship in registry releases, so a builder's run is pinned to a release like
 `runner-contract ready` is the SPEC's readiness rule for an engine whose own health check runs no
 self-test, such as vLLM's and SGLang's `/health` or Ollama's `/`. Run it beside the engine and
 register its address as the node's `HealthURL`. It never carries the node's traffic. It is new in
-0.3: until `v0.3.0` is tagged, install from `main`.
+0.3.
 
 ```sh
 runner-contract ready --manifest runner.toml --engine-health http://vllm:8000/health --listen 0.0.0.0:8080
