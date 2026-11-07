@@ -6,6 +6,7 @@ A steward who adds a suite for a new profile adds its ``Behaviour`` here, so CI 
 from __future__ import annotations
 
 import base64
+import json
 import struct
 from typing import Any
 
@@ -14,15 +15,33 @@ from reference.server import Answer, Behaviour, count_tokens
 CREATED = 1793952000
 WORDS = ["Livepeer", " runs", " AI", " jobs."]
 TEXT = "".join(WORDS)
+COUNT = "Count from 1 to 200"
+THOUGHT = "Thinking it over."
+
+
+def _output(request: dict[str, Any], fields: tuple[str, ...], thinks: int) -> tuple[list[str], bool, int]:
+    """The words of an answer, whether its budget cut it short, and the output tokens it spent.
+
+    A word is a token. A prompt asking to count to 200 wants 200 of them; anything else wants WORDS.
+    Thinking spends ``thinks`` tokens of the budget (the first of ``fields`` the request sets) first.
+    """
+    wanted = [f" {i}" if i > 1 else "1" for i in range(1, 201)] if COUNT in json.dumps(request) else WORDS
+    budget = next((request[f] for f in fields if isinstance(request.get(f), int)), None)
+    room = len(wanted) if budget is None else max(0, budget - thinks)
+    words = wanted[:room]
+    spent = thinks + len(words) if budget is None else min(budget, thinks + len(words))
+    return words, len(words) < len(wanted), spent
 
 
 class OpenAIChat(Behaviour):
     profile = "openai.chat.v1"
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
         model = request.get("model", "")
         tokens = count_tokens(request)
-        usage = {"prompt_tokens": tokens, "completion_tokens": len(WORDS), "total_tokens": tokens + len(WORDS)}
+        words, capped, spent = _output(request, ("max_completion_tokens", "max_tokens"), thinks)
+        finish = "length" if capped else "stop"
+        usage = {"prompt_tokens": tokens, "completion_tokens": spent, "total_tokens": tokens + spent}
         if request.get("stream"):
             base = {"id": "chatcmpl-ref", "object": "chat.completion.chunk", "created": CREATED, "model": model}
 
@@ -30,13 +49,13 @@ class OpenAIChat(Behaviour):
                 return None, {**base, "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
 
             events: list[tuple[str | None, Any]] = [chunk({"role": "assistant", "content": ""})]
-            events += [chunk({"content": w}) for w in WORDS]
-            events.append(chunk({}, "stop"))
+            events += [chunk({"content": w}) for w in words]
+            events.append(chunk({}, finish))
             if (request.get("stream_options") or {}).get("include_usage"):
                 events.append((None, {**base, "choices": [], "usage": usage}))
             events.append((None, "[DONE]"))
             return Answer(200, events=events)
-        message = {"role": "assistant", "content": TEXT}
+        message = {"role": "assistant", "content": "".join(words)}
         return Answer(
             200,
             {
@@ -44,7 +63,7 @@ class OpenAIChat(Behaviour):
                 "object": "chat.completion",
                 "created": CREATED,
                 "model": model,
-                "choices": [{"index": 0, "message": message, "finish_reason": "stop"}],
+                "choices": [{"index": 0, "message": message, "finish_reason": finish}],
                 "usage": usage,
             },
         )
@@ -78,14 +97,24 @@ class OpenAIChat(Behaviour):
 class OpenAIResponses(OpenAIChat):
     profile = "openai.responses.stateless.v1"
 
-    def _response(self, model: str, status: str, usage: dict[str, int] | None) -> dict[str, Any]:
-        output = []
-        if status == "completed":
-            content = [{"type": "output_text", "text": TEXT}]
-            output = [
-                {"type": "message", "id": "msg_ref", "role": "assistant", "status": "completed", "content": content}
-            ]
-        return {
+    def _response(
+        self,
+        model: str,
+        status: str,
+        usage: dict[str, int] | None,
+        words: list[str] | None = None,
+        thinks: int = 0,
+    ) -> dict[str, Any]:
+        output: list[dict[str, Any]] = []
+        if thinks and status != "in_progress":
+            # Reasoning as vLLM returns it: an item of its own, whose content also has text.
+            thought = [{"type": "reasoning_text", "text": THOUGHT}]
+            output.append({"type": "reasoning", "id": "rs_ref", "summary": [], "content": thought})
+        if words and status != "in_progress":
+            content = [{"type": "output_text", "text": "".join(words)}]
+            item = "completed" if status == "completed" else "incomplete"
+            output.append({"type": "message", "id": "msg_ref", "role": "assistant", "status": item, "content": content})
+        response: dict[str, Any] = {
             "id": "resp_ref",
             "object": "response",
             "created_at": CREATED,
@@ -94,14 +123,19 @@ class OpenAIResponses(OpenAIChat):
             "output": output,
             "usage": usage,
         }
+        if status == "incomplete":
+            response["incomplete_details"] = {"reason": "max_output_tokens"}
+        return response
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
         model = request.get("model", "")
         tokens = count_tokens(request)
-        usage = {"input_tokens": tokens, "output_tokens": len(WORDS), "total_tokens": tokens + len(WORDS)}
-        completed = self._response(model, "completed", usage)
+        words, capped, spent = _output(request, ("max_output_tokens",), thinks)
+        usage = {"input_tokens": tokens, "output_tokens": spent, "total_tokens": tokens + spent}
+        status = "incomplete" if capped else "completed"
+        final = self._response(model, status, usage, words, thinks)
         if not request.get("stream"):
-            return Answer(200, completed)
+            return Answer(200, final)
         events: list[tuple[str | None, Any]] = [
             (
                 "response.created",
@@ -112,14 +146,17 @@ class OpenAIResponses(OpenAIChat):
                 },
             )
         ]
-        for i, word in enumerate(WORDS, 1):
-            delta = {"item_id": "msg_ref", "output_index": 0, "content_index": 0, "delta": word}
-            events.append(
-                ("response.output_text.delta", {"type": "response.output_text.delta", "sequence_number": i, **delta})
-            )
-        events.append(
-            ("response.completed", {"type": "response.completed", "sequence_number": 9, "response": completed})
-        )
+        deltas = []
+        if thinks:
+            deltas.append(("response.reasoning_text.delta", {"item_id": "rs_ref", "output_index": 0, "delta": THOUGHT}))
+        index = 1 if thinks else 0
+        deltas += [
+            ("response.output_text.delta", {"item_id": "msg_ref", "output_index": index, "delta": w}) for w in words
+        ]
+        for i, (kind, delta) in enumerate(deltas, 1):
+            events.append((kind, {"type": kind, "sequence_number": i, "content_index": 0, **delta}))
+        kind = f"response.{status}"
+        events.append((kind, {"type": kind, "sequence_number": len(deltas) + 1, "response": final}))
         return Answer(200, events=events)
 
     def error_event(self) -> tuple[str | None, Any]:
@@ -129,18 +166,23 @@ class OpenAIResponses(OpenAIChat):
 class AnthropicMessages(Behaviour):
     profile = "anthropic.messages.v1"
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
         model = request.get("model", "")
         tokens = count_tokens(request)
+        words, capped, spent = _output(request, ("max_tokens",), thinks)
+        stop = "max_tokens" if capped else "end_turn"
+        content: list[dict[str, Any]] = [{"type": "thinking", "thinking": THOUGHT}] if thinks else []
+        if words:
+            content.append({"type": "text", "text": "".join(words)})
         message = {
             "id": "msg_ref",
             "type": "message",
             "role": "assistant",
             "model": model,
-            "content": [{"type": "text", "text": TEXT}],
-            "stop_reason": "end_turn",
+            "content": content,
+            "stop_reason": stop,
             "stop_sequence": None,
-            "usage": {"input_tokens": tokens, "output_tokens": len(WORDS)},
+            "usage": {"input_tokens": tokens, "output_tokens": spent},
         }
         if not request.get("stream"):
             return Answer(200, message)
@@ -153,7 +195,7 @@ class AnthropicMessages(Behaviour):
             ),
             ("ping", {"type": "ping"}),
         ]
-        for word in WORDS:
+        for word in words:
             delta = {"type": "text_delta", "text": word}
             events.append(("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": delta}))
         events += [
@@ -162,8 +204,8 @@ class AnthropicMessages(Behaviour):
                 "message_delta",
                 {
                     "type": "message_delta",
-                    "delta": {"stop_reason": "end_turn", "stop_sequence": None},
-                    "usage": {"output_tokens": len(WORDS)},
+                    "delta": {"stop_reason": stop, "stop_sequence": None},
+                    "usage": {"output_tokens": spent},
                 },
             ),
             ("message_stop", {"type": "message_stop"}),
@@ -214,7 +256,7 @@ class TypeSafeSystemOne(Behaviour):
             return {"type": "box", "box": {"top": 0.1, "bottom": 0.9, "left": 0.1, "right": 0.9}, "confidence": 0.5}
         return {"type": "noul", "noul": 0.5}
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
         questions = request.get("questions") or {}
         answers = {name: self._answer(q) for name, q in questions.items()} if isinstance(questions, dict) else {}
         usage = {"input_tokens": count_tokens(request), "output_tokens": 0}
@@ -240,7 +282,7 @@ class OpenAIEmbeddings(Behaviour):
     profile = "openai.embeddings.v1"
     VECTOR = (0.0353, -0.0168, 0.0427)
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
         given = request.get("input", "")
         inputs = given if isinstance(given, list) else [given]
         if request.get("encoding_format") == "base64":
@@ -270,14 +312,47 @@ class OpenAIEmbeddings(Behaviour):
         raise NotImplementedError("embeddings don't stream")
 
 
+class OpenAIResponsesV2(OpenAIResponses):
+    """The same answers; v2's success rule counts the incomplete one a budget cuts short as success."""
+
+    profile = "openai.responses.stateless.v2"
+
+
+class OpenAIChatV2(OpenAIChat):
+    """The same answers; v2 differs only in the requests a gateway lets through."""
+
+    profile = "openai.chat.v2"
+
+
+class AnthropicMessagesV2(AnthropicMessages):
+    """The same answers; v2 differs only in the requests a gateway lets through."""
+
+    profile = "anthropic.messages.v2"
+
+
 BEHAVIOURS: dict[str, Behaviour] = {
     b.profile: b
-    for b in (OpenAIChat(), OpenAIResponses(), AnthropicMessages(), TypeSafeSystemOne(), OpenAIEmbeddings())
+    for b in (
+        OpenAIChat(),
+        OpenAIChatV2(),
+        OpenAIResponses(),
+        OpenAIResponsesV2(),
+        AnthropicMessages(),
+        AnthropicMessagesV2(),
+        TypeSafeSystemOne(),
+        OpenAIEmbeddings(),
+    )
 }
 
 
-def manifest_for(profiles: list[str], url: str, registry: Any, *, runner_id: str = "reference-runner") -> str:
-    """A manifest for a reference runner serving ``profiles`` at ``url``, with limits for the suites' limit cases."""
+def manifest_for(
+    profiles: list[str], url: str, registry: Any, *, runner_id: str = "reference-runner", reasoning: str | None = None
+) -> str:
+    """A manifest for a reference runner serving ``profiles`` at ``url``, with limits for the suites' limit cases.
+
+    ``reasoning`` is the ``[reasoning] default`` it declares, or None to declare none.
+    """
+    declared = "" if reasoning is None else f'\n[reasoning]\ndefault = "{reasoning}"\n'
     entries = [registry.entry(p) for p in profiles]
     endpoints = "".join(
         f'\n[[endpoints]]\nname = "{name}"\nprofile = "{entry.id}"\n'
@@ -307,7 +382,7 @@ revision = "{"0" * 40}"
 [limits]
 context_tokens = 4096
 max_input_bytes = 9437184
-
+{declared}
 [revision]
 images = ["reference/runner@sha256:{"0" * 64}"]
 settings = {{ context_tokens = 4096 }}

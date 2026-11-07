@@ -1,0 +1,1267 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "anthropic.messages.v2",
+    "version": "2",
+    "description": "Anthropic Messages: a conversation in, the model's reply out, as one JSON answer or, on request, a stream of server-sent events. v2 takes system messages inside messages, as the Messages API now does and Claude Code sends, and passes blocks and tools of types it doesn't describe, such as server tools, to the runner; v1 refused both. Drafted from NE-Build-Track/inference-gateway at e5b47d8."
+  },
+  "paths": {
+    "/v1/messages": {
+      "post": {
+        "operationId": "messages",
+        "summary": "Reply to a conversation",
+        "description": "Replies to a conversation of text and images, with tool calls. Images travel inline as base64, and the runner fetches no URLs. Blocks and tools of types this entry doesn't describe pass to the runner, which serves, ignores or refuses them; it still fetches no URLs. With stream set to true the answer is a stream of named events that ends with message_stop. In a stream, counts in message_delta are cumulative, and input counts there, where present, replace those in message_start.",
+        "parameters": [
+          {
+            "name": "anthropic-version",
+            "in": "header",
+            "required": false,
+            "description": "The Anthropic API version the caller speaks, passed to the runner unchanged",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "2023-06-01"
+              ]
+            }
+          },
+          {
+            "name": "anthropic-beta",
+            "in": "header",
+            "required": false,
+            "description": "Anthropic beta features the caller asks for, passed to the runner unchanged",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagesRequest"
+              },
+              "examples": {
+                "text": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "max_tokens": 128,
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What is Livepeer?"
+                      }
+                    ]
+                  }
+                },
+                "stream": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "max_tokens": 128,
+                    "stream": true,
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What is Livepeer?"
+                      }
+                    ]
+                  }
+                },
+                "image": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "max_tokens": 32,
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "What color is this image?"
+                          },
+                          {
+                            "type": "image",
+                            "source": {
+                              "type": "base64",
+                              "media_type": "image/png",
+                              "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "tool_result": {
+                  "value": {
+                    "model": "qwen3.8-27b",
+                    "max_tokens": 256,
+                    "tools": [
+                      {
+                        "name": "weather",
+                        "description": "Current weather for a city",
+                        "input_schema": {
+                          "type": "object",
+                          "properties": {
+                            "city": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "city"
+                          ]
+                        }
+                      }
+                    ],
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "What's the weather in Boston?"
+                      },
+                      {
+                        "role": "assistant",
+                        "content": [
+                          {
+                            "type": "tool_use",
+                            "id": "toolu_1",
+                            "name": "weather",
+                            "input": {
+                              "city": "Boston"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "role": "user",
+                        "content": [
+                          {
+                            "type": "tool_result",
+                            "tool_use_id": "toolu_1",
+                            "content": "Sunny, 18 °C"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The reply: one JSON answer, or a stream of server-sent events when stream is true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                },
+                "examples": {
+                  "text": {
+                    "value": {
+                      "id": "msg_7f3a",
+                      "type": "message",
+                      "role": "assistant",
+                      "model": "qwen3.8-27b",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Livepeer is a decentralized video and AI compute network."
+                        }
+                      ],
+                      "stop_reason": "end_turn",
+                      "stop_sequence": null,
+                      "usage": {
+                        "input_tokens": 15,
+                        "output_tokens": 9,
+                        "cache_read_input_tokens": 0,
+                        "cache_creation_input_tokens": 0
+                      }
+                    }
+                  }
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageEvent"
+                },
+                "examples": {
+                  "message_start": {
+                    "value": {
+                      "type": "message_start",
+                      "message": {
+                        "id": "msg_7f3a",
+                        "type": "message",
+                        "role": "assistant",
+                        "model": "qwen3.8-27b",
+                        "content": [],
+                        "stop_reason": null,
+                        "stop_sequence": null,
+                        "usage": {
+                          "input_tokens": 15,
+                          "output_tokens": 1,
+                          "cache_read_input_tokens": 0,
+                          "cache_creation_input_tokens": 0
+                        }
+                      }
+                    }
+                  },
+                  "content_block_delta": {
+                    "value": {
+                      "type": "content_block_delta",
+                      "index": 0,
+                      "delta": {
+                        "type": "text_delta",
+                        "text": "Livepeer"
+                      }
+                    }
+                  },
+                  "message_delta": {
+                    "value": {
+                      "type": "message_delta",
+                      "delta": {
+                        "stop_reason": "end_turn",
+                        "stop_sequence": null
+                      },
+                      "usage": {
+                        "output_tokens": 9
+                      }
+                    }
+                  },
+                  "message_stop": {
+                    "value": {
+                      "type": "message_stop"
+                    }
+                  },
+                  "error": {
+                    "value": {
+                      "type": "error",
+                      "error": {
+                        "type": "api_error",
+                        "message": "The engine stopped during generation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the Anthropic format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                },
+                "examples": {
+                  "invalid": {
+                    "value": {
+                      "type": "error",
+                      "error": {
+                        "type": "invalid_request_error",
+                        "message": "max_tokens: Field required"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-livepeer": {
+          "framing": [
+            "json",
+            "sse"
+          ],
+          "success": {
+            "status": [
+              200
+            ],
+            "final": [
+              {
+                "framing": "sse",
+                "in": "last-event",
+                "event": "message_stop"
+              }
+            ]
+          },
+          "errors": [
+            {
+              "framing": "sse",
+              "in": "any-event",
+              "event": "error",
+              "kind": "internal",
+              "note": "An error event in a stream, such as overloaded_error or api_error"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/type",
+              "equals": "exceed_context_size_error",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as llama.cpp reports it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/error/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as vLLM and Ollama report it"
+            },
+            {
+              "framing": "json",
+              "status": 400,
+              "in": "body",
+              "pointer": "/message",
+              "matches": "context length|maximum model length|context size",
+              "kind": "input_unsupported",
+              "note": "The prompt doesn't fit the runner's context, as SGLang reports it"
+            },
+            {
+              "status": 400,
+              "kind": "input_invalid",
+              "note": "The request is malformed or holds a value the runner refuses"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable",
+              "note": "The runner doesn't serve the requested model; no work started"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported",
+              "note": "The request is larger than a limit the runner enforces, such as limits.max_input_bytes"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid",
+              "note": "A request validation error, as FastAPI-based servers report it"
+            },
+            {
+              "status": 429,
+              "kind": "busy",
+              "note": "The runner is at capacity; no work started"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable",
+              "note": "The runner is loading, or its queue is full; no work started"
+            }
+          ],
+          "work_reports": [
+            {
+              "framing": "json",
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/input_tokens"
+            },
+            {
+              "framing": "json",
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/cache_read_input_tokens"
+            },
+            {
+              "framing": "json",
+              "measure": "input_tokens",
+              "in": "body",
+              "pointer": "/usage/cache_creation_input_tokens"
+            },
+            {
+              "framing": "json",
+              "measure": "output_tokens",
+              "in": "body",
+              "pointer": "/usage/output_tokens"
+            },
+            {
+              "framing": "sse",
+              "measure": "input_tokens",
+              "in": "any-event",
+              "event": "message_start",
+              "pointer": "/message/usage/input_tokens"
+            },
+            {
+              "framing": "sse",
+              "measure": "input_tokens",
+              "in": "any-event",
+              "event": "message_start",
+              "pointer": "/message/usage/cache_read_input_tokens"
+            },
+            {
+              "framing": "sse",
+              "measure": "input_tokens",
+              "in": "any-event",
+              "event": "message_start",
+              "pointer": "/message/usage/cache_creation_input_tokens"
+            },
+            {
+              "framing": "sse",
+              "measure": "output_tokens",
+              "in": "any-event",
+              "event": "message_delta",
+              "pointer": "/usage/output_tokens"
+            }
+          ],
+          "inputs": [
+            {
+              "field": "/messages",
+              "kind": "inline",
+              "max_bytes": 8388608,
+              "media_types": [
+                "text/plain",
+                "image/png",
+                "image/jpeg",
+                "image/gif",
+                "image/webp"
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "field": "/content",
+              "kind": "inline",
+              "max_bytes": 8388608
+            }
+          ],
+          "attempts": "gateway"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MessagesRequest": {
+        "description": "A Messages request. Fields not listed here pass to the runner unchanged, such as a runner's own sampling settings",
+        "type": "object",
+        "required": [
+          "model",
+          "messages",
+          "max_tokens"
+        ],
+        "properties": {
+          "model": {
+            "description": "The model name the runner serves",
+            "type": "string",
+            "minLength": 1
+          },
+          "messages": {
+            "description": "The conversation so far, oldest message first: user and assistant turns, with system messages a caller places between them",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/InputMessage"
+            }
+          },
+          "max_tokens": {
+            "description": "The most tokens to generate",
+            "type": "integer",
+            "minimum": 1
+          },
+          "system": {
+            "description": "A system prompt, as text or text blocks",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "text"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "text"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "stream": {
+            "description": "true for a stream of server-sent events; false or absent for one JSON answer",
+            "type": "boolean"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "top_p": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "top_k": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stop_sequences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tool"
+            }
+          },
+          "tool_choice": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "auto",
+                  "any",
+                  "tool",
+                  "none"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "disable_parallel_tool_use": {
+                "type": "boolean"
+              }
+            },
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "tool"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "thinking": {
+            "description": "Extended thinking: type enabled with budget_tokens, or type disabled",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "budget_tokens": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "user_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "InputMessage": {
+        "description": "One message. A system message carries text a caller adds between turns, as Claude Code sends reminders. A runner that can't serve one answers 400 with an invalid_request_error whose message is Unexpected role \"system\", as the Messages API does, and Claude Code then resends the request without them",
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/InputBlock"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "InputBlock": {
+        "description": "One block of a message: text, an image, a tool call, a tool result or thinking, each checked in full, or a block of another type, which passes",
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "text"
+            ],
+            "properties": {
+              "type": {
+                "const": "text"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/ImageBlock"
+          },
+          {
+            "$ref": "#/components/schemas/ToolUseBlock"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "tool_use_id"
+            ],
+            "properties": {
+              "type": {
+                "const": "tool_result"
+              },
+              "tool_use_id": {
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "text"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "text"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "$ref": "#/components/schemas/ImageBlock"
+                        },
+                        {
+                          "description": "A block of a tool result of a type this entry doesn't describe, such as document or search_result. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+                          "type": "object",
+                          "required": [
+                            "type"
+                          ],
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "not": {
+                                "enum": [
+                                  "text",
+                                  "image"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "is_error": {
+                "type": "boolean"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/ThinkingBlock"
+          },
+          {
+            "description": "A block of a type this entry doesn't describe, such as document, redacted_thinking or server_tool_use. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "text",
+                    "image",
+                    "tool_use",
+                    "tool_result",
+                    "thinking"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ImageBlock": {
+        "description": "An image, inline as base64. The runner fetches no URLs and reads no stored files",
+        "type": "object",
+        "required": [
+          "type",
+          "source"
+        ],
+        "properties": {
+          "type": {
+            "const": "image"
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "type",
+              "media_type",
+              "data"
+            ],
+            "properties": {
+              "type": {
+                "const": "base64"
+              },
+              "media_type": {
+                "enum": [
+                  "image/png",
+                  "image/jpeg",
+                  "image/gif",
+                  "image/webp"
+                ]
+              },
+              "data": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9+/]+={0,2}$",
+                "contentEncoding": "base64",
+                "x-media": {
+                  "by": "inline",
+                  "accept": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/gif",
+                    "image/webp"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "ToolUseBlock": {
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "name",
+          "input"
+        ],
+        "properties": {
+          "type": {
+            "const": "tool_use"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "input": {
+            "description": "The arguments",
+            "type": "object"
+          }
+        }
+      },
+      "ThinkingBlock": {
+        "type": "object",
+        "required": [
+          "type",
+          "thinking"
+        ],
+        "properties": {
+          "type": {
+            "const": "thinking"
+          },
+          "thinking": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "ClientTool": {
+        "description": "A tool the caller runs: a name and a JSON Schema for its input",
+        "type": "object",
+        "required": [
+          "name",
+          "input_schema"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "custom",
+              null
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "input_schema": {
+            "description": "A JSON Schema for the input",
+            "type": "object"
+          }
+        }
+      },
+      "Tool": {
+        "description": "A tool the model may call: a client tool, checked in full, or a tool of another type, which passes",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ClientTool"
+          },
+          {
+            "description": "A tool of a type this entry doesn't describe, such as a server tool like web_search_20250305. The profile doesn't promise it: it passes to the runner, which serves it, ignores it or refuses the request as invalid",
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "custom"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Usage": {
+        "description": "Token counts. The input total is input_tokens plus cache_read_input_tokens and cache_creation_input_tokens",
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "output_tokens"
+        ],
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cache_read_input_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "cache_creation_input_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "Message": {
+        "description": "The whole answer. In a message_start event, content is empty and stop_reason is null",
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "role",
+          "model",
+          "content",
+          "stop_reason",
+          "usage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "const": "message"
+          },
+          "role": {
+            "const": "assistant"
+          },
+          "model": {
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputBlock"
+            }
+          },
+          "stop_reason": {
+            "enum": [
+              "end_turn",
+              "max_tokens",
+              "stop_sequence",
+              "tool_use",
+              "pause_turn",
+              "refusal",
+              null
+            ]
+          },
+          "stop_sequence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        }
+      },
+      "OutputBlock": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "text"
+            ],
+            "properties": {
+              "type": {
+                "const": "text"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/ToolUseBlock"
+          },
+          {
+            "$ref": "#/components/schemas/ThinkingBlock"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "data"
+            ],
+            "properties": {
+              "type": {
+                "const": "redacted_thinking"
+              },
+              "data": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "MessageEvent": {
+        "description": "The data of one server-sent event, whose event name equals its type. A stream runs message_start, content blocks, message_delta, then message_stop; ping may come at any point",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "message_start"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "message"
+              ],
+              "properties": {
+                "message": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "content_block_start"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "index",
+                "content_block"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "content_block": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "content_block_delta"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "index",
+                "delta"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "delta": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "content_block_stop"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "index"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "message_delta"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "delta",
+                "usage"
+              ],
+              "properties": {
+                "delta": {
+                  "type": "object",
+                  "properties": {
+                    "stop_reason": {
+                      "enum": [
+                        "end_turn",
+                        "max_tokens",
+                        "stop_sequence",
+                        "tool_use",
+                        "pause_turn",
+                        "refusal",
+                        null
+                      ]
+                    },
+                    "stop_sequence": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                },
+                "usage": {
+                  "description": "Cumulative counts. Input counts here, where present, replace those in message_start",
+                  "type": "object",
+                  "required": [
+                    "output_tokens"
+                  ],
+                  "properties": {
+                    "output_tokens": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "input_tokens": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "cache_read_input_tokens": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "cache_creation_input_tokens": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "error"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "required": [
+          "type",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "description": "Such as invalid_request_error, not_found_error, overloaded_error or api_error",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorBody": {
+        "description": "An error answer: type error with an error object. llama.cpp nests an OpenAI-style error instead, and FastAPI validation errors carry detail",
+        "type": "object",
+        "anyOf": [
+          {
+            "required": [
+              "error"
+            ]
+          },
+          {
+            "required": [
+              "detail"
+            ]
+          }
+        ],
+        "properties": {
+          "type": {
+            "const": "error"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "detail": {
+            "type": [
+              "array",
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "anthropic.messages.v2",
+    "kind": "profile",
+    "mode": "single-shot",
+    "capabilities": [
+      "chat"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "gateway"
+  }
+}

@@ -4,6 +4,15 @@
       "aliases": [],
       "path": "registry/anthropic/messages.v1.json",
       "sha256": "9f874a8f51cede2666e96bad4f361fffcd468038a0abe3587e9a158e72167993",
+      "status": "deprecated",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "anthropic.messages.v2": {
+      "aliases": [],
+      "path": "registry/anthropic/messages.v2.json",
+      "sha256": "d5c9f5eb898c08cb098e249937e20ca26f446bd1f3928720ac52334d555bdc81",
       "status": "active",
       "steward": [
         "@NE-Build-Track/ne-spe"
@@ -715,6 +724,15 @@
       "aliases": [],
       "path": "registry/openai/chat.v1.json",
       "sha256": "66270a6db8f263bb25802bf3a6ffc2260e53364133d12e0998d4856cbfecead7",
+      "status": "deprecated",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.chat.v2": {
+      "aliases": [],
+      "path": "registry/openai/chat.v2.json",
+      "sha256": "7e98c88ab5c99ea801efa692251971db495feff8ae879bb85ea96c4e9ce8d99b",
       "status": "active",
       "steward": [
         "@NE-Build-Track/ne-spe"
@@ -742,6 +760,15 @@
       "aliases": [],
       "path": "registry/openai/responses.stateless.v1.json",
       "sha256": "3f503ad787397721966b040960e5ded3456dfab611bc31971ebcc6ec13dc8dfa",
+      "status": "deprecated",
+      "steward": [
+        "@NE-Build-Track/ne-spe"
+      ]
+    },
+    "openai.responses.stateless.v2": {
+      "aliases": [],
+      "path": "registry/openai/responses.stateless.v2.json",
+      "sha256": "22d31b91028d5c5bdbeb115a5521c49555d2152dc100d8f0b6a0007e2cededee",
       "status": "active",
       "steward": [
         "@NE-Build-Track/ne-spe"

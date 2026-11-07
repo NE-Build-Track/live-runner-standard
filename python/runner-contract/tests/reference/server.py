@@ -55,7 +55,8 @@ class Behaviour:
 
     profile = ""
 
-    def answer(self, endpoint: str, request: dict[str, Any]) -> Answer:
+    def answer(self, endpoint: str, request: dict[str, Any], thinks: int = 0) -> Answer:
+        """The answer to a valid request. ``thinks``: output tokens spent reasoning before any content."""
         raise NotImplementedError
 
     def invalid(self, endpoint: str, problem: str) -> Answer:
@@ -88,6 +89,8 @@ class Settings:
     max_input_bytes: int = 9 * 1024 * 1024
     faults: frozenset[str] = frozenset()
     event_gap_s: float = 0.01
+    thinks: int = 0
+    """Output tokens the engine spends reasoning before it answers, as a reasoning model does; 0 for none."""
 
 
 def _strip(value: Any, key: str) -> Any:
@@ -146,7 +149,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         state = self.server.state
-        if self.path != "/health":
+        if self.path.split("?", 1)[0] != "/health":
             self._json(404, {"error": {"message": "not found"}})
         elif "health_starting" in state.settings.faults:
             self._json(503, {"status": "starting"})
@@ -195,7 +198,8 @@ class _Handler(BaseHTTPRequestHandler):
             if count_tokens(request) > state.settings.context_tokens:
                 self._send(behaviour.too_long(endpoint, state.settings.context_tokens), faults)
                 return
-        self._send(behaviour.answer(endpoint, request if isinstance(request, dict) else {}), faults, behaviour)
+        answer = behaviour.answer(endpoint, request if isinstance(request, dict) else {}, state.settings.thinks)
+        self._send(answer, faults, behaviour)
 
     def _send(self, answer: Answer, faults: frozenset[str], behaviour: Behaviour | None = None) -> None:
         body, events = answer.body, answer.events

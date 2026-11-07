@@ -19,10 +19,19 @@ def test_a_valid_body_passes(registry: Registry) -> None:
 def test_each_problem_is_one_line_with_where_it_is(registry: Registry) -> None:
     body = {"messages": [{"role": "robot", "content": "hi"}], "stream": "yes"}
     check = validate_request(registry, "openai.chat.v1", "chat_completions", body)
-    assert not check.ok
-    assert "'model' is a required property" in check.problems
-    assert any(p.startswith("at /messages/0/role: 'robot' is not one of") for p in check.problems)
-    assert any(p.startswith("at /stream:") for p in check.problems)
+    assert check.problems == (
+        "the body is missing model",
+        'at /messages/0/role: must be one of "system", "user", "assistant"',
+        "at /stream: must be of type boolean",
+    )
+
+
+def test_a_problem_never_quotes_the_value(registry: Registry) -> None:
+    """A refused value can be a whole conversation, and problems go to callers and logs."""
+    secret = "a customer's whole conversation " * 1000
+    body = {"model": "m", "messages": [{"role": secret, "content": "hi"}], "stream": secret, secret[:50]: 1}
+    check = validate_request(registry, "openai.chat.v1", "chat_completions", body)
+    assert check.problems and all("customer" not in p and len(p) < 200 for p in check.problems)
 
 
 def test_refs_resolve_within_the_entry(registry: Registry) -> None:
@@ -83,7 +92,7 @@ def test_answers_check_against_the_entrys_response_schemas() -> None:
     )
     assert check is not None and check.ok
     bad = validate_response(real, "openai.chat.v1", "chat_completions", {}, status=200, content_type="application/json")
-    assert bad is not None and "'id' is a required property" in bad.problems
+    assert bad is not None and bad.problems == ("the body is missing id, object, created, model, choices, usage",)
     # One SSE event's data: [DONE] isn't JSON, and the event schema allows it.
     done = validate_response(
         real, "openai.chat.v1", "chat_completions", "[DONE]", status=200, content_type="text/event-stream"

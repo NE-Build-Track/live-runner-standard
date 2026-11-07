@@ -13,6 +13,7 @@ from livepeer_runner_contract import (
     Envelope,
     Ineligible,
     IneligibleReason,
+    Reasoning,
     envelope_problems,
     parse_envelope,
 )
@@ -176,3 +177,20 @@ def test_a_float_runner_contract_is_one() -> None:
     """JSON Schema compares numbers by value, so 1.0 is const 1; true is not."""
     raw = envelope_text().replace('"runner_contract":1', '"runner_contract":1.0')
     assert parsed(raw).deployment_revision == REVISION
+
+
+@pytest.mark.parametrize(
+    ("reasoning", "expected"),
+    [
+        ({"default": "on"}, Reasoning.ON),
+        ({"default": "off"}, Reasoning.OFF),
+        ({"default": "sometimes"}, None),  # a later value: undeclared, never ineligible
+        (None, None),
+    ],
+)
+def test_reasoning_default(reasoning: dict[str, str] | None, expected: Reasoning | None) -> None:
+    assert parsed(envelope_text(reasoning=reasoning)).reasoning is expected
+
+
+def test_reasoning_without_a_default_breaks_the_schema() -> None:
+    assert refused(envelope_text(reasoning={})).reason is IneligibleReason.INVALID

@@ -155,7 +155,7 @@ class FinalCondition:
     equals: Any = ABSENT
     present: bool | None = None
     matches: re.Pattern[str] | None = None
-    """Never set on a final condition; here so both kinds of condition test alike."""
+    """A regular expression the value at ``pointer``, as a string, must contain a match for."""
 
 
 @dataclass(frozen=True)
@@ -325,9 +325,23 @@ def _pattern(item: Mapping[str, Any]) -> re.Pattern[str] | None:
         raise _Malformed(f"matches {source!r} isn't a pattern Python's re can run: {exc}") from exc
 
 
+_FINAL_KEYS = frozenset({"framing", "in", "event", "data", "pointer", "equals", "matches", "present"})
+_ERROR_KEYS = frozenset(
+    {"kind", "status", "framing", "content_type", "in", "event", "pointer", "equals", "matches", "present", "note"}
+)
+
+
+def _known(item: Mapping[str, Any], keys: frozenset[str], what: str) -> None:
+    """Refuse a condition with a key this reader doesn't know, rather than read it more loosely than it says."""
+    unknown = sorted(set(item) - keys)
+    if unknown:
+        raise _Malformed(f"{what} has {', '.join(unknown)}, which this reader doesn't know; upgrade the library")
+
+
 def _final(item: Any) -> FinalCondition:
     if not isinstance(item, dict) or "in" not in item:
         raise _Malformed("a final condition needs `in`")
+    _known(item, _FINAL_KEYS, "a final condition")
     return FinalCondition(
         location=_location(item["in"]),
         framing=None if item.get("framing") is None else _framing(item["framing"]),
@@ -335,6 +349,7 @@ def _final(item: Any) -> FinalCondition:
         data=_optional_str(item, "data"),
         pointer=_optional_str(item, "pointer"),
         equals=item.get("equals", ABSENT),
+        matches=_pattern(item),
         present=_present(item),
     )
 
@@ -353,6 +368,7 @@ def _success(value: Any) -> SuccessRule:
 def _error(item: Any) -> ErrorMapping:
     if not isinstance(item, dict) or item.get("kind") not in set(ErrorKind):
         raise _Malformed("each error needs a base kind")
+    _known(item, _ERROR_KEYS, "an error mapping")
     status = item.get("status")
     if status is not None and (not isinstance(status, int) or isinstance(status, bool)):
         raise _Malformed("an error's status must be an integer")

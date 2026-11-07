@@ -1,17 +1,18 @@
 {
   "conformance_suite": 1,
   "profile": "openai.responses.stateless.v1",
-  "version": "1",
+  "version": "2",
   "cancel": "responses.sse",
   "cases": [
     {
       "id": "responses.json",
       "endpoint": "responses",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
       "request": {
         "model": "$model",
         "input": "Reply with one short sentence.",
         "store": false,
-        "max_output_tokens": 16
+        "max_output_tokens": 512
       },
       "expect": {
         "framing": "json"
@@ -19,7 +20,11 @@
       "content": [
         {
           "in": "body",
-          "pointer": "/output/*/content/*/text"
+          "pointer": "/output/*/content/*",
+          "where": {
+            "/type": "output_text"
+          },
+          "value": "/text"
         }
       ],
       "work_reports": true
@@ -27,11 +32,12 @@
     {
       "id": "responses.sse",
       "endpoint": "responses",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
       "request": {
         "model": "$model",
         "input": "Reply with one short sentence.",
         "store": false,
-        "max_output_tokens": 16,
+        "max_output_tokens": 512,
         "stream": true
       },
       "expect": {
@@ -40,7 +46,11 @@
       "content": [
         {
           "in": "any-event",
-          "pointer": "/delta"
+          "pointer": "",
+          "where": {
+            "/type": "response.output_text.delta"
+          },
+          "value": "/delta"
         }
       ],
       "work_reports": true

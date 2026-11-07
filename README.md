@@ -31,13 +31,16 @@ Still to come: steward review of the first entries (a change to a released entry
 
 1. **Pick its capability** from [`capabilities.json`](capabilities.json), such as `chat` or
    `video-transcode`. That is its App ID, with nothing else in it: no model, team or version.
-2. **Pick its wire profiles** from [`registry/`](registry/), such as `openai.chat.v1`. If none fits,
+2. **Pick its wire profiles** from [`registry/`](registry/), such as `openai.chat.v2`. If none fits,
    propose an entry in your namespace by pull request (see [Contributing](#contributing)).
 3. **Write its envelope** as [`SPEC.md`](SPEC.md) describes: `runner_contract: 1`, the
-   `deployment_revision` from the recipe, one endpoint per profile, and the model it serves. Keep it
-   under 1,024 bytes. `runner-contract envelope` builds it from a short manifest.
+   `deployment_revision` from the recipe, one endpoint per profile, and the model it serves. A model
+   that can reason declares whether it does by default (`reasoning`). Keep it under 1,024 bytes.
+   `runner-contract envelope` builds it from a short manifest.
 4. **Make it behave** as "How every runner behaves" in [`SPEC.md`](SPEC.md) says: honest readiness,
-   errors mapped by its entry, work reports, cancellation within 10 s, and an honest price unit.
+   errors mapped by its entry, work reports, cancellation within 10 s, and an honest price unit. In
+   front of a stock engine, whose health check tests nothing, run `runner-contract ready` and register
+   it as `HealthURL`; nobody writes their own.
 5. **Register it** with `App` set to the capability and `Metadata` set to the envelope.
    `runner-contract block` prints the node's `[[Runners]]` block and `runner-contract check`
    validates one.
@@ -46,7 +49,7 @@ The [`runner-contract` tool](python/runner-contract/README.md) installs from thi
 
 ```sh
 uvx --from "git+https://github.com/NE-Build-Track/live-runner-standard.git@v0.2.0#subdirectory=python/runner-contract" \
-  runner-contract init --capability chat --profile openai.chat.v1
+  runner-contract init --capability chat --profile openai.chat.v2
 ```
 
 ## Building a gateway

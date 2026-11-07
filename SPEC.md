@@ -76,6 +76,7 @@ identity of a deployment is `deployment_revision`.
 | `limits` | No | Only limits the runner enforces, such as `context_tokens` or `max_input_bytes` |
 | `admission` | No | `candidate` (the default): any app may select it. `private`: only apps holding an approval. Any other value means `private` |
 | `capacity_group` | No | `{id, slots}` for registrations that share one GPU |
+| `reasoning` | No | `{"default": "on"}` or `{"default": "off"}`: whether the model reasons before it answers when a request doesn't say (see "Reasoning"). Any other `default` means undeclared |
 | `attributes` | No | App-specific selection values, such as languages, presets or encoding profiles, passed through uninterpreted |
 
 An endpoint's `{name}` is the `operationId` of that endpoint's operation in its profile's registry
@@ -96,7 +97,7 @@ A two-endpoint chat runner's whole envelope, 381 bytes once the digest and revis
 ```json
 {"runner_contract":1,"deployment_revision":"sha256:…",
  "model":{"name":"qwen3.8-27b","source":"hf:Qwen/Qwen3.8-27B-AWQ","revision":"…"},
- "endpoints":{"chat_completions":{"profile":"openai.chat.v1"},"messages":{"profile":"anthropic.messages.v1"}},
+ "endpoints":{"chat_completions":{"profile":"openai.chat.v2"},"messages":{"profile":"anthropic.messages.v2"}},
  "limits":{"context_tokens":131072}}
 ```
 
@@ -109,7 +110,7 @@ holding:
 - **`model`:** the model's `source` and `revision`, when there is a model;
 - **`profiles`:** the wire profiles served, each once, and any encoding profiles or presets, sorted;
 - **`settings`:** the settings that change behavior, such as context length, encoder, input-origin
-  policy or parsers.
+  policy, parsers, or the setting that turns reasoning on or off by default.
 
 Canonical means UTF-8, keys sorted, no whitespace between tokens, and non-ASCII characters written as
 themselves. In Python:
@@ -167,7 +168,7 @@ by pull request:
 | What does my app rely on? | The gateway's own policy: capability, model and wire profile, with approvals for specific deployments |
 
 A gateway depends on a capability, never on one runner. A policy reads, for example, "`chat`, model
-`hf:Qwen/Qwen3.8-27B-AWQ`, profile `openai.chat.v1`, from these approved deployments". If one runner
+`hf:Qwen/Qwen3.8-27B-AWQ`, profile `openai.chat.v2`, from these approved deployments". If one runner
 disappears, any other approved runner that matches serves instead. The network doesn't promise
 availability; an app that needs guaranteed capacity arranges it with operators, through `private`
 admission and approvals.
@@ -176,7 +177,7 @@ admission and approvals.
 
 | Before v1 | App ID in v1 | The rest, in the envelope |
 |---|---|---|
-| `blueclaw/chat/qwen3.8-27b` | `chat` | Model `qwen3.8-27b`; profiles `openai.chat.v1` and others |
+| `blueclaw/chat/qwen3.8-27b` | `chat` | Model `qwen3.8-27b`; profiles `openai.chat.v2` and others |
 | `fal-ideogram-v4` | `text-to-image` | Model `fal:ideogram/v4`; profile `fal.ideogram-v4.v1` |
 | `video/vod-transcode-v1` | `video-transcode` | Profile `zio.vod-transcode.v1`; `admission: private`; encoding profiles in `attributes` |
 | `whisper` | `transcription` | Model `whisper-large-v3`; profile `openai.transcriptions.v1` |
@@ -237,6 +238,16 @@ A profile entry holds:
 - **Examples,** which validate against the entry's own schemas, **and a conformance suite.**
 
 For `ndjson` and `sse` framing, the response schema and its examples describe one line or event.
+
+**Request schemas are open where a vendor's API grows.** A field an entry doesn't list passes to the
+runner unchanged. So does an item whose type the entry doesn't describe, in any list keyed by `type`:
+tools, tool calls, input items, and content parts and blocks. Each such list ends with a branch for
+other types. The types an entry describes are checked in full, and what the profile excludes is
+refused, such as a stored response or an image to fetch by URL. A profile promises only what it
+describes: given another type, a runner serves it, ignores it or refuses the request, and it still
+fetches only the inputs its entry declares. Coding agents rely on this. Claude Code sends server tools
+and blocks that `anthropic.messages.v1` didn't describe, and Codex sends custom and built-in tools
+beside its functions, so a gateway that checked them against the v1 entries refused both.
 
 Entries point into requests and answers with JSON pointers (RFC 6901), in which a `*` token stands for
 every item of an array or every member of an object: `/data/*/url` names each image's URL. A work
@@ -310,7 +321,7 @@ profiles whose kinds it can supply. This area is marked for a security review.
 |---|---|---|---|
 | `inline` | In and out | A value inside the JSON: text, or base64 with a media type | The profile states a size cap |
 | `body` | In and out | The whole body is the media: multipart in, binary out | The content type is declared; within the gateway's body cap |
-| `url` (in) | In | An HTTPS URL the runner fetches | Origin policy `public` or `deployment` (`deployment` means private); the runner refuses internal addresses; it checks sha256 where one is given |
+| `url` (in) | In | An HTTPS URL the runner fetches | Origin policy `public`: the runner fetches public addresses only and refuses internal ones. `deployment` (which means private): it fetches only from its deployment's own origins, which may be internal, and refuses every other address. It checks sha256 where one is given |
 | `url` (out) | Out | A URL the runner returns | It states when it expires, and it is fetchable without paying the node |
 | `storage-grant` | In or out | Scoped access to the caller's storage: an S3 POST policy or a presigned PUT | Limited to one prefix; expires shortly after the deadline; a completion record is written last |
 | `trickle` | In and out | A Trickle channel of segments, for sessions only | The segment media type is declared; segments are at most 10 MB (10,000,000 bytes); the reader keeps up |
@@ -350,7 +361,7 @@ rule differs by profile, the entry says how.
 
 | Concern | Rule |
 |---|---|
-| Readiness | `HealthURL` answers 200 only after a self-test of every advertised profile passes, and 503 with `{"status": "starting"}` or `{"status": "failed"}` otherwise. A runner that loses its model, GPU or upstream vendor returns to 503. A health check that always answers 200 doesn't conform |
+| Readiness | `HealthURL` answers 200 only after a self-test of every advertised profile passes, and 503 with `{"status": "starting"}` or `{"status": "failed"}` otherwise. A runner that loses its model, GPU or upstream vendor returns to 503. A health check that always answers 200 doesn't conform. A stock engine's own health check (vLLM's, SGLang's, Ollama's) runs no self-test, so its operator runs `runner-contract ready` beside it and registers that as `HealthURL`: it self-tests each profile with the suite's success cases, then follows the engine's health. With `--front` it also relays every other request to the engine, for a runner the node reaches at one address |
 | Headers | A streamed answer sends its response headers within 1 s, since payment starts when they arrive; a single JSON or binary answer may send them when it is done |
 | Keepalive | A streamed answer sends a line, event or byte at least every 15 s |
 | Success | Exactly as the entry's success rule says; a 200 alone is not success where the entry says otherwise |
@@ -361,8 +372,27 @@ rule differs by profile, the entry says how.
 | Attempts | No deduplication unless the entry says so; when the caller owns attempts, the entry says `attempts: caller` |
 | Lost answers | A runner that writes to the caller's storage writes a completion record last; an adapter for a queued backend returns the backend's request ID, so a late result can still be collected |
 | Inputs and outputs | Only the kinds the entry declares, by their rules |
+| Types the entry doesn't describe | Served, ignored, or refused as `input_invalid` or `input_unsupported`; never `internal`, and never a reason to fetch a URL |
 | Proxies | A runner that forwards to a vendor checks the vendor in its self-test and maps the vendor's errors to base kinds |
 | Price | The `PriceInfo` unit matches how the node charges for the work |
+
+### Reasoning
+
+Some models reason before they answer, and the deployment decides whether they do: one model can be
+served with reasoning on by default, and also with it off. Both conform. The envelope says which:
+
+- **`"reasoning": {"default": "on"}`:** the model reasons when a request doesn't say otherwise.
+- **`"reasoning": {"default": "off"}`:** it answers without reasoning when a request doesn't say
+  otherwise.
+- **No `reasoning`:** it declares neither, so a gateway can rely on neither.
+
+A gateway that needs one mode selects runners whose `reasoning.default` is that mode. The runtime
+setting that makes the default, such as a chat-template argument or a server flag, goes in the
+revision's `settings`, so changing it changes `deployment_revision` and voids approvals.
+
+Reasoning spends output tokens, and `max_tokens` and `max_output_tokens` count them. So the suites'
+success cases leave a reasoning model room to finish (512 tokens), and a runner that declares
+`default: off` must also answer within 16. A request-level switch is an open question (below).
 
 ## What every gateway does, and must not do
 
@@ -375,15 +405,16 @@ decisions to itself.
    version, a broken required key or a record over 1,024 bytes makes that runner alone ineligible, and
    never fails a discovery refresh.
 2. **Log each runner it ignores** once, with the reason and a link to this repository.
-3. **Select by capability, model and wire profile,** then by attributes, limits and admission, and fail
-   over only among runners that match.
+3. **Select by capability, model and wire profile,** then by attributes, limits, declared reasoning and
+   admission, and fail over only among runners that match.
 4. **Take behavior from the registry entry:** paths, framing, the success rule, errors, work reports,
    attempts and input and output kinds.
 5. **Pin a registry release** and check each entry's digest against its index.
 6. **Keep approvals in its own policy,** keyed on orchestrator, runner, `deployment_revision` and
    profile, and reloadable without a restart.
 7. **Honor `admission: private`,** and treat any value it doesn't know as `private`.
-8. **Check a request against the entry's schema** before paying.
+8. **Check a request against the entry's schema** before paying. The schema refuses only what no
+   runner of the profile takes; a type it doesn't describe passes, and the runner decides.
 9. **Retry by the base kind's rule,** only where the app opts in, and never when the entry says
    `attempts: caller`.
 10. **Build its surfaces from the registry:** HTTP routes, MCP tools, SDK methods and console forms come
@@ -438,13 +469,19 @@ evidence may serve better in the long run.
 - **Each profile has a suite** in `conformance/<namespace>/<name>.v<major>/`. Every suite checks the
   envelope (valid, at most 1,024 bytes, revision recomputes), health semantics, golden requests against
   the schemas and success rule, work reports, declared errors, limits and cancellation; session suites
-  add idle and drain.
+  add idle and drain. A case can apply only to a runner that declares something, such as
+  `reasoning.default: off`.
 - **Builders run it** with the builder tool's `conform` command on the runner's own host, which needs no
-  payment.
+  payment. Where a case needs values minted for the run (an input URL on the deployment's own storage,
+  its sha256, an output grant), the builder supplies them as fixtures, so the runner keeps the input
+  policy its revision names; a report never holds their values.
 - **It writes a report** in the format of
   [`conformance-report.v1.schema.json`](schemas/conformance-report.v1.schema.json): runner ID,
   `deployment_revision`, profile, suite and tool versions, time, each check's result and an overall
-  pass. Reports aren't signed.
+  pass. Reports aren't signed. Check IDs fall into four groups a reader can weigh apart: `common.health.*`
+  (readiness), `common.cancel` (cancellation), the other `common.*` checks (the registration), and
+  each case's checks (the calls), so a report shows at a glance that, say, the calls conform and
+  readiness doesn't.
 - **The builder attaches the report to an approval request,** and the gateway stores it with the
   approval.
 - **Gateways decide what to require:** a report, a recent report, their own paid probe, or nothing.
@@ -476,3 +513,18 @@ is `runner_contract: 2`. Profiles never change once released. The standard is ve
   identifier format.
 - **The capability list:** names may shift once the first real entries are written.
 - **Admission and capacity:** how a one-slot runner is shared before it becomes `candidate`.
+- **Session cases:** suites for persistent profiles, with idle and drain checks, need the tool to start
+  a session, push and read Trickle channels and stop it, against a Trickle stand-in or an off-chain
+  node. Until then a persistent runner proves its sessions by its own end-to-end tests.
+- **Runner IDs in discovery:** the node reports none, so the tool writes `runner_id` into the
+  envelope. A node that reports it would make that unnecessary.
+- **Reasoning per request:** a switch each chat profile defines, so one deployment serves both modes.
+  `anthropic.messages.v2` has `thinking` and the Responses profiles `reasoning.effort`, from their
+  public APIs; `openai.chat.v2` has none. Which of them stock engines honor is being measured. Then a
+  check that reasoning reaches the caller apart from the answer, not inside its text.
+- **Types a runner serves beyond its entry:** the envelope can't say that a runner serves Codex's
+  `apply_patch` or a server tool, so a gateway can't send a request that needs one to a runner that
+  does, and a refusal of one isn't retried elsewhere.
+- **Undescribed types in suites:** a case that sends a type the entry doesn't describe, and passes
+  when the runner serves, ignores or refuses it but not when it fails as `internal`. A case can't yet
+  accept either a success or an error.

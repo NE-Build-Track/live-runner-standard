@@ -1,12 +1,70 @@
 {
   "conformance_suite": 1,
   "profile": "openai.chat.v1",
-  "version": "1",
+  "version": "2",
   "cancel": "chat_completions.sse",
   "cases": [
     {
       "id": "chat_completions.json",
       "endpoint": "chat_completions",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Reply with one short sentence."
+          }
+        ],
+        "max_tokens": 512
+      },
+      "expect": {
+        "framing": "json"
+      },
+      "content": [
+        {
+          "in": "body",
+          "pointer": "/choices/0/message/content"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "chat_completions.sse",
+      "endpoint": "chat_completions",
+      "note": "A budget a reasoning model can think in and still answer; a one-sentence answer stays short, so the cost is small",
+      "request": {
+        "model": "$model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Reply with one short sentence."
+          }
+        ],
+        "max_tokens": 512,
+        "stream": true,
+        "stream_options": {
+          "include_usage": true
+        }
+      },
+      "expect": {
+        "framing": "sse"
+      },
+      "content": [
+        {
+          "in": "any-event",
+          "pointer": "/choices/*/delta/content"
+        }
+      ],
+      "work_reports": true
+    },
+    {
+      "id": "chat_completions.reasoning_off",
+      "endpoint": "chat_completions",
+      "note": "Runs only for a runner whose envelope declares reasoning.default off: with no room to think, it must still answer",
+      "when": {
+        "/reasoning/default": "off"
+      },
       "request": {
         "model": "$model",
         "messages": [
@@ -25,36 +83,7 @@
           "in": "body",
           "pointer": "/choices/0/message/content"
         }
-      ],
-      "work_reports": true
-    },
-    {
-      "id": "chat_completions.sse",
-      "endpoint": "chat_completions",
-      "request": {
-        "model": "$model",
-        "messages": [
-          {
-            "role": "user",
-            "content": "Reply with one short sentence."
-          }
-        ],
-        "max_tokens": 16,
-        "stream": true,
-        "stream_options": {
-          "include_usage": true
-        }
-      },
-      "expect": {
-        "framing": "sse"
-      },
-      "content": [
-        {
-          "in": "any-event",
-          "pointer": "/choices/*/delta/content"
-        }
-      ],
-      "work_reports": true
+      ]
     },
     {
       "id": "chat_completions.invalid",
