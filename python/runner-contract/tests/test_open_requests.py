@@ -6,6 +6,7 @@ lets them through and the runner decides; the types it does describe are still c
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -107,9 +108,51 @@ CHAT_AGENT = {
 }
 
 
+# Requests real coding agents sent, one per agent and wire, captured by BlueClaw's agent tests from
+# each agent's first turn against a local server. Paths, device and session IDs are replaced.
+AGENTS = Path(__file__).parent / "fixtures" / "agents"
+CAPTURED = {
+    "claude-code-2.1.319.anthropic-messages.json": MESSAGES,
+    "codex-0.165.0.openai-responses.json": RESPONSES,
+    "opencode-1.18.34.openai-chat.json": CHAT,
+    "opencode-1.18.34.openai-chat.title.json": CHAT,
+}
+
+
+def captured(name: str) -> Any:
+    return json.loads((AGENTS / name).read_text(encoding="utf-8"))
+
+
 @pytest.fixture(scope="module")
 def real() -> Registry:
     return Registry.load(ROOT)
+
+
+@pytest.mark.parametrize(("name", "profile"), sorted(CAPTURED.items()))
+def test_what_coding_agents_really_sent_passes(real: Registry, name: str, profile: str) -> None:
+    check = validate_request(real, profile, ENDPOINT[profile], captured(name))
+    assert check.ok, check.problems
+
+
+def test_every_captured_request_is_checked() -> None:
+    assert sorted(path.name for path in AGENTS.glob("*.json")) == sorted(CAPTURED)
+
+
+@pytest.mark.parametrize(
+    ("name", "profile", "where"),
+    [
+        # Claude Code's reminder, a system message among the turns.
+        ("claude-code-2.1.319.anthropic-messages.json", "anthropic.messages.v1", ["at /messages/1/role"]),
+        # Codex's namespace of tools, and its built-in web search.
+        ("codex-0.165.0.openai-responses.json", "openai.responses.stateless.v1", ["at /tools/4", "at /tools/8"]),
+    ],
+)
+def test_the_v1_entries_refused_what_they_really_sent(
+    real: Registry, name: str, profile: str, where: list[str]
+) -> None:
+    problems = validate_request(real, profile, ENDPOINT[profile.replace(".v1", ".v2")], captured(name)).problems
+    for place in where:
+        assert any(p.startswith(place) for p in problems), (place, problems)
 
 
 @pytest.mark.parametrize(("profile", "body"), [(MESSAGES, CLAUDE_CODE), (RESPONSES, CODEX), (CHAT, CHAT_AGENT)])
