@@ -109,7 +109,9 @@ CHAT_AGENT = {
 
 
 # Requests real coding agents sent, one per agent and wire, captured by BlueClaw's agent tests from
-# each agent's first turn against a local server. Paths, device and session IDs are replaced.
+# each agent's first turn against a local server. Paths, device and session IDs are replaced, and the
+# prose (prompts, messages, tool descriptions) is elided: the entries check shape, and this repo is
+# public, so it doesn't republish the agents' own prompts.
 AGENTS = Path(__file__).parent / "fixtures" / "agents"
 CAPTURED = {
     "claude-code-2.1.319.anthropic-messages.json": MESSAGES,
