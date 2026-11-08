@@ -3,7 +3,7 @@
 The standard's changes, newest first. Registry releases are git tags named by date
 (`2026.11.1`, `2026.11.2`…) and list their entries in the release notes.
 
-## 2026.11.3 and v0.3.0, unreleased
+## 2026.11.3 and v0.3.0, 7 November 2026
 
 From BlueClaw's first `conform` run: stock vLLM 0.32.0 serving Qwen3.8-27B with a reasoning parser,
 on `openai.chat.v1`, `anthropic.messages.v1` and `openai.responses.stateless.v1`. From BlueClaw's

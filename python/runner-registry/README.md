@@ -10,7 +10,7 @@ A gateway pins a release by installing its tag, and reads it with the gateway li
 [`livepeer-runner-contract`](../runner-contract/README.md):
 
 ```sh
-pip install "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@2026.11.1#subdirectory=python/runner-registry"
+pip install "livepeer-runner-registry @ git+https://github.com/NE-Build-Track/live-runner-standard.git@2026.11.3#subdirectory=python/runner-registry"
 ```
 
 ```python
