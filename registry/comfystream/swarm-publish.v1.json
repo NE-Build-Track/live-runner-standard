@@ -1,0 +1,134 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "comfystream.swarm-publish.v1",
+    "version": "1",
+    "description": "Native ComfyStream HTTP contract. Local candidate; execution conformance must be verified separately. Explicit local capability addition: live-media-publish. Signed postage belongs to the caller. Companion GET /ingest uses stamped binary WebSocket frames and text eos; it is not mislabeled as HTTP binary framing."
+  },
+  "paths": {
+    "/start": {
+      "post": {
+        "operationId": "start",
+        "summary": "Start caller-stamped live Swarm publishing",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "owner",
+                  "batch_id"
+                ],
+                "properties": {
+                  "owner": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  },
+                  "batch_id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session and in/events/stamps/control trickle channel URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "session",
+                    "protocol",
+                    "in",
+                    "events",
+                    "stamps",
+                    "control"
+                  ],
+                  "properties": {
+                    "session": {
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": 1
+                    },
+                    "in": {
+                      "type": "string",
+                      "format": "uri",
+                      "x-media": {
+                        "by": "trickle"
+                      }
+                    },
+                    "events": {
+                      "type": "string",
+                      "format": "uri",
+                      "x-media": {
+                        "by": "trickle"
+                      }
+                    },
+                    "stamps": {
+                      "type": "string",
+                      "format": "uri",
+                      "x-media": {
+                        "by": "trickle"
+                      }
+                    },
+                    "control": {
+                      "type": "string",
+                      "format": "uri",
+                      "x-media": {
+                        "by": "trickle"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Invalid publisher, occupied session, or unavailable Bee/funding"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 409,
+              "kind": "busy"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "comfystream.swarm-publish.v1",
+    "kind": "profile",
+    "mode": "persistent",
+    "capabilities": [
+      "live-media-publish"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller"
+  }
+}

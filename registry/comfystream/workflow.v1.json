@@ -1,0 +1,320 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "comfystream.workflow.v1",
+    "version": "1",
+    "description": "Native ComfyStream HTTP contract. Local candidate; execution conformance must be verified separately. Companion GET /ws_stream upgrades to WebSocket: client JSON start, server JSON ready, binary JPEG frames in both directions, text eos to end. The standard has no WebSocket framing enum; this companion transport is preserved but is not advertised as an HTTP binary-framed operation."
+  },
+  "paths": {
+    "/analyze": {
+      "post": {
+        "operationId": "analyze",
+        "summary": "ComfyStream session analyze",
+        "description": "Existing session control protocol. Session identity is supplied by the orchestrator; parameters depend on the operator-installed pipeline. See the runner /status for its enforced parameter schema.",
+        "responses": {
+          "200": {
+            "description": "Session control result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Declared session or parameter error"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 409,
+              "kind": "busy"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/start_stream": {
+      "post": {
+        "operationId": "start_stream",
+        "summary": "ComfyStream session start_stream",
+        "description": "Existing session control protocol. Session identity is supplied by the orchestrator; parameters depend on the operator-installed pipeline. See the runner /status for its enforced parameter schema. Returns trickle input/output channel URLs; media is transported over those channels.",
+        "responses": {
+          "200": {
+            "description": "Session control result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Declared session or parameter error"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 409,
+              "kind": "busy"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/update_stream": {
+      "post": {
+        "operationId": "update_stream",
+        "summary": "ComfyStream session update_stream",
+        "description": "Existing session control protocol. Session identity is supplied by the orchestrator; parameters depend on the operator-installed pipeline. See the runner /status for its enforced parameter schema.",
+        "responses": {
+          "200": {
+            "description": "Session control result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Declared session or parameter error"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 409,
+              "kind": "busy"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/text": {
+      "get": {
+        "operationId": "text",
+        "summary": "ComfyStream session text",
+        "description": "Existing session control protocol. Session identity is supplied by the orchestrator; parameters depend on the operator-installed pipeline. See the runner /status for its enforced parameter schema.",
+        "responses": {
+          "200": {
+            "description": "Session control result",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "default": {
+            "description": "Declared session or parameter error"
+          }
+        },
+        "x-livepeer": {
+          "framing": "json",
+          "success": {
+            "status": [
+              200
+            ]
+          },
+          "errors": [
+            {
+              "status": 400,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 404,
+              "kind": "unavailable"
+            },
+            {
+              "status": 409,
+              "kind": "busy"
+            },
+            {
+              "status": 413,
+              "kind": "input_unsupported"
+            },
+            {
+              "status": 422,
+              "kind": "input_invalid"
+            },
+            {
+              "status": 500,
+              "kind": "internal"
+            },
+            {
+              "status": 502,
+              "kind": "upstream_failed"
+            },
+            {
+              "status": 503,
+              "kind": "unavailable"
+            },
+            {
+              "status": 504,
+              "kind": "deadline_exceeded"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "x-livepeer": {
+    "registry_entry": 1,
+    "profile": "comfystream.workflow.v1",
+    "kind": "profile",
+    "mode": "persistent",
+    "capabilities": [
+      "live-video-to-video"
+    ],
+    "admission": {
+      "default": "candidate"
+    },
+    "attempts": "caller"
+  }
+}

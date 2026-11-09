@@ -18,6 +18,69 @@
         "@NE-Build-Track/ne-spe"
       ]
     },
+    "comfystream.ffmpeg.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/ffmpeg.v1.json",
+      "sha256": "f3fe0ed9fe9c1b655a5083b7866f3a1e9bb52df74959855a864c7b96e77fd6ce",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.image-transformations.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/image-transformations.v1.json",
+      "sha256": "1964d2e5553d55c57ec6d054c852f2c4b7d0c1fcdbb47c8a4c38551be1e88c4d",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.live.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/live.v1.json",
+      "sha256": "8f93c9570ee0867b2099672ec71361cc46db2f77aaeb04412e4b675fd16dbee1",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.meshes.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/meshes.v1.json",
+      "sha256": "cea59b7741d1ccab2ad83812fbb5c7615d270ed2b359cb55837e9f326465710a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.music.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/music.v1.json",
+      "sha256": "118cd3f7c5cc3f26b663644320c5f02ad1c43847afc75967e5631ec33ccce03e",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.swarm-publish.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/swarm-publish.v1.json",
+      "sha256": "c7df7ceeac4ee17c610d48986c726300d37689b44a454063808fba3c390e7f62",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "comfystream.workflow.v1": {
+      "aliases": [],
+      "path": "registry/comfystream/workflow.v1.json",
+      "sha256": "e5354c25223c63b3156b7b11a9e4a72e1765a625f0f4340385e018377b9cccad",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.bernini-r-edit-video.v1": {
       "aliases": [],
       "path": "registry/fal/bernini-r-edit-video.v1.json",
