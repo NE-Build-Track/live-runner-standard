@@ -405,6 +405,15 @@
         "@eliteprox"
       ]
     },
+    "fal.luma-agent-ray-v3-2-video-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-video-to-video.v2.json",
+      "sha256": "19102cdd494e7b3975edd13dc50f5249d66b18bf8ae4593aa91f92690cbc73a8",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.marlin.v1": {
       "aliases": [],
       "path": "registry/fal/marlin.v1.json",
@@ -423,10 +432,28 @@
         "@eliteprox"
       ]
     },
+    "fal.meshy-v7-image-to-3d.v2": {
+      "aliases": [],
+      "path": "registry/fal/meshy-v7-image-to-3d.v2.json",
+      "sha256": "c35ddfb07c1f2ad2b12039fbe69ea58bf1c8bf875235da671d24db5ad33de048",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.minimax-h3-max-image-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/minimax-h3-max-image-to-video.v1.json",
       "sha256": "a17248c28c1d88988efcfe40d48f4a085ec7a571fcb81e9a5590cc79e172faa8",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-image-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-image-to-video.v2.json",
+      "sha256": "650ffe25f2afc546ec3fab66caa7dd4ee6c253bfd171463266d013d0b181825d",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -441,10 +468,28 @@
         "@eliteprox"
       ]
     },
+    "fal.minimax-h3-max-reference-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-reference-to-video.v2.json",
+      "sha256": "299dbdefd1b770fd56308678140bdde2620e214e252d4a43151d53c92648cdad",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.minimax-h3-max-text-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/minimax-h3-max-text-to-video.v1.json",
       "sha256": "7d9fd5b227d259cafb8ca086ff7642aa377769eb2f7ceb25ed3625c1d7166fe9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-text-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-text-to-video.v2.json",
+      "sha256": "82dbdace4e4472b3a2a84d170d6a1123d81eeecb71b4eef04040f0e9e35193f8",
       "status": "active",
       "steward": [
         "@eliteprox"
