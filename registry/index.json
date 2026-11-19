@@ -108,10 +108,28 @@
         "@eliteprox"
       ]
     },
+    "fal.bytedance-seedance-2-0-image-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-image-to-video.v2.json",
+      "sha256": "f7f403d443444d06a37e33c51e71c915fc1db028fde28687ced9fe7eda45e85a",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.bytedance-seedance-2-0-reference-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/bytedance-seedance-2-0-reference-to-video.v1.json",
       "sha256": "755b8332149582ea063eff413086d78dbfc2c2962cee250a29a82c9e91c575a6",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-0-reference-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-reference-to-video.v2.json",
+      "sha256": "da2b3a4decb21b3640d21eb5c45f9551b485a3a0d693e6a204c7171553ee622b",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -126,10 +144,28 @@
         "@eliteprox"
       ]
     },
+    "fal.bytedance-seedance-2-0-text-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-0-text-to-video.v2.json",
+      "sha256": "5172774d1b94f20ee32c7ce8a4ea5404fd1279a18df1a250f7efe2972b9de1e0",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.bytedance-seedance-2-5-image-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/bytedance-seedance-2-5-image-to-video.v1.json",
       "sha256": "278a12b9d02e9e079354ac7195a06f7483cb23b0ce24aedfb174151dff8524b9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-5-image-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-image-to-video.v2.json",
+      "sha256": "fb67d6d3c1c469629ebd619b4bf4ac3b328a5a2fde7e7915aefcb5a68ae48797",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -144,10 +180,28 @@
         "@eliteprox"
       ]
     },
+    "fal.bytedance-seedance-2-5-reference-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-reference-to-video.v2.json",
+      "sha256": "a46cf1090e87175801191ed3d4507fbeec1d09935c863da957b7cc4d04f0ea52",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.bytedance-seedance-2-5-text-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/bytedance-seedance-2-5-text-to-video.v1.json",
       "sha256": "71906833b37146f608441cca47df10f74d8017ad525c11149831ac965df729fa",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.bytedance-seedance-2-5-text-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/bytedance-seedance-2-5-text-to-video.v2.json",
+      "sha256": "1c1fd8329afe321785c84ec75e933e0d47dfe9d41290407388c1b091f74fe318",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -175,6 +229,15 @@
       "aliases": [],
       "path": "registry/fal/ffmpeg-api-compose.v1.json",
       "sha256": "35be57e82693ee82b7e5b20bbe939cf9648a218147698d7bcc6b29b40d1752b5",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.ffmpeg-api-compose.v2": {
+      "aliases": [],
+      "path": "registry/fal/ffmpeg-api-compose.v2.json",
+      "sha256": "b08d5962fea9e2e32309985cd9eced469a351123d99287afe2beee03883c699e",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -405,6 +468,15 @@
         "@eliteprox"
       ]
     },
+    "fal.luma-agent-ray-v3-2-video-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/luma-agent-ray-v3-2-video-to-video.v2.json",
+      "sha256": "19102cdd494e7b3975edd13dc50f5249d66b18bf8ae4593aa91f92690cbc73a8",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.marlin.v1": {
       "aliases": [],
       "path": "registry/fal/marlin.v1.json",
@@ -423,10 +495,28 @@
         "@eliteprox"
       ]
     },
+    "fal.meshy-v7-image-to-3d.v2": {
+      "aliases": [],
+      "path": "registry/fal/meshy-v7-image-to-3d.v2.json",
+      "sha256": "87a155c74e88a34e4380d21ce459d0fa6f5e6979fd9259424b6746b6662f0445",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.minimax-h3-max-image-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/minimax-h3-max-image-to-video.v1.json",
       "sha256": "a17248c28c1d88988efcfe40d48f4a085ec7a571fcb81e9a5590cc79e172faa8",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-image-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-image-to-video.v2.json",
+      "sha256": "650ffe25f2afc546ec3fab66caa7dd4ee6c253bfd171463266d013d0b181825d",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -441,10 +531,28 @@
         "@eliteprox"
       ]
     },
+    "fal.minimax-h3-max-reference-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-reference-to-video.v2.json",
+      "sha256": "299dbdefd1b770fd56308678140bdde2620e214e252d4a43151d53c92648cdad",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
     "fal.minimax-h3-max-text-to-video.v1": {
       "aliases": [],
       "path": "registry/fal/minimax-h3-max-text-to-video.v1.json",
       "sha256": "7d9fd5b227d259cafb8ca086ff7642aa377769eb2f7ceb25ed3625c1d7166fe9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.minimax-h3-max-text-to-video.v2": {
+      "aliases": [],
+      "path": "registry/fal/minimax-h3-max-text-to-video.v2.json",
+      "sha256": "82dbdace4e4472b3a2a84d170d6a1123d81eeecb71b4eef04040f0e9e35193f8",
       "status": "active",
       "steward": [
         "@eliteprox"
@@ -463,6 +571,15 @@
       "aliases": [],
       "path": "registry/fal/mirelo-ai-sfx1-6-text-to-audio.v1.json",
       "sha256": "a42f602e934a0824064a5ee1d26773979c6100f8e54d769ff2f45a6253b634d9",
+      "status": "active",
+      "steward": [
+        "@eliteprox"
+      ]
+    },
+    "fal.mirelo-ai-sfx1-6-text-to-audio.v2": {
+      "aliases": [],
+      "path": "registry/fal/mirelo-ai-sfx1-6-text-to-audio.v2.json",
+      "sha256": "85b39202ed493b485af23c620d49baf068a3d02253d2b28b7b3e7a6c8555910d",
       "status": "active",
       "steward": [
         "@eliteprox"
